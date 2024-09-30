@@ -1,0 +1,44 @@
+
+1. Post Routes : 
+
+        Create a Post
+            Endpoint: POST /api/posts
+            Description: Create a new post.
+        
+        Retrieve All Posts
+            Endpoint: GET /api/posts
+            Description: Retrieve a list of all posts.
+        
+        Retrieve a Single Post
+            Endpoint: GET /api/posts/:postId
+            Description: Retrieve a specific post by its ID.
+        
+        Update a Post
+            Endpoint: PUT /api/posts/:postId
+            Description: Update a specific post by its ID.
+        
+        Delete a Post
+            Endpoint: DELETE /api/posts/:postId
+            Description: Delete a specific post by its ID.
+
+2. Comment Routes :
+
+        Create a Comment
+            Endpoint: POST /api/posts/:postId/comments
+            Description: Create a new comment for a specific post.
+
+        Retrieve All Comments for a Post
+            Endpoint: GET /api/posts/:postId/comments
+            Description: Retrieve all comments related to a specific post.
+
+        Retrieve a Specific Comment
+            Endpoint: GET /api/posts/:postId/comments/:commentId
+            Description: Retrieve a specific comment by its ID associated with a specific post.
+
+        Update a Comment
+            Endpoint: PUT /api/posts/:postId/comments/:commentId
+            Description: Update a specific comment by its ID associated with a specific post.
+
+        Delete a Comment
+            Endpoint: DELETE /api/posts/:postId/comments/:commentId
+            Description: Delete a specific comment by its ID associated with a specific post.        
