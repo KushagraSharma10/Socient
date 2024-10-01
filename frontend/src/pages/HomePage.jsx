@@ -71,40 +71,6 @@ function HomePage() {
         }));
     };
 
-    //     const post = posts.find(post => post._id === id);
-    //     console.log('Comment being submitted:', post.commentInput);
-    //     if (!post || post.commentInput.trim() === "") return;
-
-    //     const newComment = {
-    //       content: post.commentInput,
-    //       sentiment: 'Positive', // Placeholder, could be based on sentiment analysis logic
-    //     };
-
-    //     try {
-    //       const token = localStorage.getItem('token');
-    //       const response = await axios.post(`http://localhost:3000/api/posts/${id}/comments`, newComment, {
-    //         headers: { Authorization: `Bearer ${token}` }
-    //       });
-
-    //       if (response.status === 201) {
-    //         const savedComment = response.data;
-    //         console.log('Saved comment:', savedComment); // Debugging
-    //         setPosts(posts.map(post => {
-    //           if (post._id === id) {
-    //             return {
-    //               ...post,
-    //               comments: [...(post.comments || []), savedComment], // Ensure comments array is not undefined
-    //               commentInput: '', // Clear comment input after submission
-    //             };
-    //           }
-    //           return post;
-    //         }));
-    //       }
-    //     } catch (error) {
-    //       console.error('Error submitting comment:', error);
-    //     }
-    //   };
-
     // const handleCommentSubmit = async (id) => {
     //     const post = posts.find(post => post._id === id);
 
@@ -113,7 +79,7 @@ function HomePage() {
 
     //     const newComment = {
     //         content: post.commentInput, // Use the commentInput for content
-    //         sentiment: 'Positive', // Placeholder sentiment, could be dynamic
+    //         userDp: "https://via.placeholder.com/50", // Provide a default user DP or use dynamic user DP
     //     };
 
     //     try {
@@ -143,72 +109,33 @@ function HomePage() {
     //     }
     // };
 
-    // const handleCommentSubmit = async (id) => {
-    //     const post = posts.find(post => post._id === id);
-    
-    //     // Ensure that the post exists and the comment input is not empty or whitespace
-    //     if (!post || !post.commentInput || post.commentInput.trim() === "") return;
-    
-    //     const newComment = {
-    //         content: post.commentInput, // Use the commentInput for content
-    //         // No need to set sentiment here, it will be set on the backend
-    //     };
-    
-    //     try {
-    //         const token = localStorage.getItem('token');
-    //         const response = await axios.post(`http://localhost:3000/api/posts/${id}/comments`, newComment, {
-    //             headers: { Authorization: `Bearer ${token}` }
-    //         });
-    
-    //         if (response.status === 201) {
-    //             const savedComment = response.data.comment; // Access the saved comment
-    //             console.log('Saved comment:', savedComment); // Debugging
-    
-    //             // Update the posts state immutably to add the new comment and clear the comment input
-    //             setPosts(posts.map(post => {
-    //                 if (post._id === id) {
-    //                     return {
-    //                         ...post,
-    //                         comments: [...(post.comments || []), savedComment], // Add the new comment
-    //                         commentInput: '', // Clear the comment input after submission
-    //                     };
-    //                 }
-    //                 return post;
-    //             }));
-    //         }
-    //     } catch (error) {
-    //         console.error('Error submitting comment:', error);
-    //     }
-    // };
-    
     const handleCommentSubmit = async (id) => {
         const post = posts.find(post => post._id === id);
-    
-        // Ensure that the post exists and the comment input is not empty or whitespace
+
         if (!post || !post.commentInput || post.commentInput.trim() === "") return;
-    
+
         const newComment = {
-            content: post.commentInput, // Use the commentInput for content
-            userDp: "https://via.placeholder.com/50", // Provide a default user DP or use dynamic user DP
+            content: post.commentInput,
+            userDp: "https://via.placeholder.com/50",
         };
-    
+
         try {
             const token = localStorage.getItem('token');
             const response = await axios.post(`http://localhost:3000/api/posts/${id}/comments`, newComment, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-    
+
             if (response.status === 201) {
-                const savedComment = response.data.comment; // Access the saved comment
-                console.log('Saved comment:', savedComment); // Debugging
-    
-                // Update the posts state immutably to add the new comment and clear the comment input
+                const savedComment = response.data.comment;
+                const overallSentiment = response.data.overallSentiment; // Access the overall sentiment
+
                 setPosts(posts.map(post => {
                     if (post._id === id) {
                         return {
                             ...post,
-                            comments: [...(post.comments || []), savedComment], // Add the new comment
-                            commentInput: '', // Clear the comment input after submission
+                            comments: [...(post.comments || []), savedComment],
+                            commentInput: '',
+                            overallSentiment // Update the overall sentiment for the post
                         };
                     }
                     return post;
@@ -218,8 +145,6 @@ function HomePage() {
             console.error('Error submitting comment:', error);
         }
     };
-    
-
 
 
     return (
@@ -280,27 +205,47 @@ function HomePage() {
                                     )}
                                     <p className="text-gray-700 mt-3">{post.content}</p>
                                 </div>
-                                {/* Like and Comment Icons */}
-                                <div className="flex items-center gap-3 mt-4">
-                                    <button
-                                        onClick={() => handleLikeToggle(post._id)}
-                                        className="flex items-center text-gray-600"
-                                    >
-                                        {post.hasLiked ? (
-                                            <FaThumbsUp className="text-blue-500 mr-1" />
-                                        ) : (
-                                            <FaRegThumbsUp className="mr-1" />
-                                        )}
-                                        <span>{post.likes}</span>
-                                    </button>
+                                <div className='flex items-center justify-between px-3'>
+                                    {/* Like and Comment Icons */}
+                                    <div className="flex items-center gap-3 mt-4">
+                                        <button
+                                            onClick={() => handleLikeToggle(post._id)}
+                                            className="flex items-center text-gray-600"
+                                        >
+                                            {post.hasLiked ? (
+                                                <FaThumbsUp className="text-blue-500 mr-1" />
+                                            ) : (
+                                                <FaRegThumbsUp className="mr-1" />
+                                            )}
+                                            <span>{post.likes}</span>
+                                        </button>
 
-                                    <button
-                                        onClick={() => handleCommentToggle(post._id)}
-                                        className="flex items-center text-gray-600"
-                                    >
-                                        <FaComment className="mr-1" />
-                                        <span>{(post.comments || []).length}</span> {/* Safe access to comments */}
-                                    </button>
+                                        <button
+                                            onClick={() => handleCommentToggle(post._id)}
+                                            className="flex items-center text-gray-600"
+                                        >
+                                            <FaComment className="mr-1" />
+                                            <span>{(post.comments || []).length}</span> {/* Safe access to comments */}
+                                        </button>
+                                    </div>
+                                    {/* Display Overall Sentiment */}
+                                    {post.overallSentiment && (
+                                        <div className="mt-2 text-md font-semibold text-gray-600">
+                                            Overall Sentiment:{" "}
+                                            <span
+                                                className={`${post.overallSentiment === 'positive'
+                                                        ? 'text-green-500' // Green color for positive sentiment
+                                                        : post.overallSentiment === 'negative'
+                                                            ? 'text-red-500' // Red color for negative sentiment
+                                                            : 'text-gray-600' // Gray color for neutral or undefined sentiment
+                                                    }`}
+                                            >
+                                                {post.overallSentiment}
+                                            </span>
+                                        </div>
+
+
+                                    )}
                                 </div>
                             </div>
 
