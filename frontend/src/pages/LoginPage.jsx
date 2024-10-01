@@ -19,7 +19,7 @@ const LoginPage = () => {
             console.log('Login successful:', response.data);
 
             // Storing user data (token) in localStorage or state
-            const { token } = response.data; // Assume the token is returned from your login response
+            const { token } = response.data;     // Assume the token is returned from your login response
             localStorage.setItem('token', token);
             // Redirecting to the HomePage
             navigate('/home');  // Navigates to the HomePage route after successful login

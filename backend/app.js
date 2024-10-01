@@ -8,12 +8,27 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const expressSession = require("express-session");
 
-app.use(cors());
+// Connect to the database
 connectDB();
 
+// Enable CORS with credentials
+app.use(
+  cors({
+    origin: ['http://localhost:5173', 'http://localhost:3000'], // Add your frontend URLs here
+    credentials: true, // Allow credentials (cookies) to be sent
+    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed HTTP methods
+    allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
+  })
+);
+
+// Initialize cookie parser
+app.use(cookieParser());
+
+// Parse incoming request bodies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
+
+// Initialize session middleware
 app.use(
   expressSession({
     resave: false,
@@ -22,8 +37,13 @@ app.use(
   })
 );
 
-app.use("/api/posts/", commentRoutes);
-app.use("/api/users/", userRoutes);
-app.use("/api/posts/", postRoutes);
+// Set up your routes
+app.use("/api/posts", postRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/posts", commentRoutes); // Moved comment routes to a separate line for clarity
 
-app.listen(3000);
+// Start the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});

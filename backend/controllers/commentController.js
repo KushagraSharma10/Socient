@@ -44,41 +44,69 @@ const Post = require('../models/Post');
 //   }
 // };
 
+// const createComment = async (req, res) => {
+//   try {
+//     const { content, userDp, sentiment } = req.body;
+//     const { postId } = req.params;
+
+//     // Create the comment object
+//     const comment = new Comment({
+//       postId,
+//       content,
+//       userId: req.body.userId,
+//       sentiment: sentiment || "Neutral", // Default to 'Neutral' if not provided
+//       userDp: userDp || "https://via.placeholder.com/50", // Default profile picture
+//     });
+
+//     // Save the comment to the database
+//     await comment.save();
+
+//     // Update the post to include the new comment
+//     const post = await Post.findById(postId);
+//     post.comments.push(comment._id); // Use the saved comment's ID
+//     await post.save();
+
+//     console.log("Saving comment:", { postId, userId, content, userDp, sentiment });
+//     console.log('Request body:', req.body);
+
+//     // Return success response with the saved comment
+//     res.status(201).json({
+//       message: "Comment created successfully",
+//       comment,
+//     });
+//   } catch (error) {
+//     console.error("Error creating comment:", error);
+//     res.status(500).json({ message: "Error creating comment" });
+//   }
+// };
+
 const createComment = async (req, res) => {
   try {
-    const { content, userId, userDp, sentiment } = req.body;
-    const { postId } = req.params;
+    const { content, userDp, sentiment } = req.body;
+    const postId = req.params.id; // Assuming you send the postId in the URL
+    const userId = req.userId; // Assuming you extract this from a JWT
 
-    // Create the comment object
-    const comment = new Comment({
+    // Create a new comment
+    const newComment = new Comment({
       postId,
-      content,
       userId,
-      sentiment: sentiment || "Neutral", // Default to 'Neutral' if not provided
-      userDp: userDp || "https://via.placeholder.com/50", // Default profile picture
+      content,
+      userDp: userDp || "https://via.placeholder.com/50",
+      sentiment,
     });
 
-    // Save the comment to the database
-    await comment.save();
+    const savedComment = await newComment.save();
 
-    // Update the post to include the new comment
-    const post = await Post.findById(postId);
-    post.comments.push(comment._id); // Use the saved comment's ID
-    await post.save();
+    // Push the new comment to the corresponding post's comments array
+    await Post.findByIdAndUpdate(postId, { $push: { comments: savedComment._id } });
 
-    console.log("Saving comment:", { postId, userId, content, userDp, sentiment });
-    console.log('Request body:', req.body);
-
-    // Return success response with the saved comment
-    res.status(201).json({
-      message: "Comment created successfully",
-      comment,
-    });
+    res.status(201).json(savedComment);
   } catch (error) {
-    console.error("Error creating comment:", error);
-    res.status(500).json({ message: "Error creating comment" });
+    console.error('Error creating comment:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 
 module.exports = createComment;
