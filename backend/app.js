@@ -2,12 +2,14 @@ const express = require("express");
 const connectDB = require("./config/mongoose-connection");
 const commentRoutes = require("./routes/commentRoutes");
 const postRoutes = require("./routes/postRoutes");
-const userRoutes = require("./routes/userRoutes");
+const userRoutes = require("./routes/userRoutes");  
 const app = express();
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const expressSession = require("express-session");
 
+
+require('dotenv').config();
 // Connect to the database
 connectDB();
 
@@ -17,7 +19,7 @@ app.use(
     origin: ['http://localhost:5173', 'http://localhost:3000'], // Add your frontend URLs here
     credentials: true, // Allow credentials (cookies) to be sent
     methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed HTTP methods
-    allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'], // Specify allowed headers
   })
 );
 

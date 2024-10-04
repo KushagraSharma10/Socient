@@ -15,7 +15,7 @@ const LoginPage = () => {
             const response = await axios.post('http://localhost:3000/api/users/login', {
                 email,
                 password,
-            });
+            }, { withCredentials: true });
             console.log('Login successful:', response.data);
 
             // Storing user data (token) in localStorage or state

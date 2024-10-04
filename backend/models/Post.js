@@ -12,10 +12,10 @@ const postSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  likes: {
-    type: Number,
-    default: 0,
-  },
+  likes: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'  // Store user IDs who liked the post
+}],
   image: {
     type: String,
     default: "" // URL of the post image

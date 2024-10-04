@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Post = require('../models/Post'); // Import the Post model
-const { createPost, getPosts } = require('../controllers/postController');
+const { createPost, getPosts, likePost } = require('../controllers/postController');
 const upload = require('../config/multer-config');
 const authenticateToken = require('../middlewares/authenticateToken');
 
@@ -12,6 +12,8 @@ router.post('/',authenticateToken, upload.single("image"), createPost);
 router.get('/', getPosts);
 
 // Example route for deleting a post
+router.put('/:id/like', likePost);
+
 router.delete('/:postId', async (req, res) => {
   // Logic to delete a post
 });

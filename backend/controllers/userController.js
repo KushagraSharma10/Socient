@@ -2,38 +2,7 @@ const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const { generateToken } = require("../utils/generateToken");
 
-// const LoginUser = async (req, res) => {
-//   try {
-//     const { email, password } = req.body;
-//     const user = await User.findOne({ email });
-
-//     if (!user) {
-//       return res.status(401).json({ message: "User not found" });
-//     }
-
-//     // Compare password
-//     bcrypt.compare(password, user.password, function (err, result) {
-//       if (err) {
-//         return res.status(500).json({ message: "Server Error" });
-//       }
-
-//       if (result) {
-//         // Password matched
-//         const token = generateToken(user);
-//         res.cookie("token", token);
-//         return res.json({ message: "Logged in successfully", token });
-//       } else {
-//         // Invalid credentials
-//         return res.status(401).json({ message: "Invalid credentials" });
-//       }
-//     });
-//   } catch (err) {
-//     console.error(err);
-//     return res.status(500).json({ message: "Server Error" });
-//   }
-// };
-
-const LoginUser = async (req, res) => {
+const   LoginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
@@ -43,21 +12,18 @@ const LoginUser = async (req, res) => {
     }
 
     // Compare password
-    bcrypt.compare(password, user.password, async function (err, result) {
+    bcrypt.compare(password, user.password, function (err, result) {
       if (err) {
         return res.status(500).json({ message: "Server Error" });
       }
 
       if (result) {
         // Password matched
-        const token = generateToken(user); // Ensure this function works as expected
-        res.cookie("token", token, {
-          httpOnly: true,
-          secure: false, // Set to true if you're using HTTPS
-          sameSite: 'None', // Important for cross-origin requests
-          maxAge: 3600000 // Optional: Cookie expiration time
+        const token = generateToken(user);
+        res.cookie("token", token,{
+          expires: new Date(Date.now() + 60 * 60 * 1000), // Expires in 1 hour
+          httpOnly: true, // Only accessible via HTTP, not via JavaScript
         });
-        console.log('Setting cookie:', { token }); // Log cookie setting
         return res.json({ message: "Logged in successfully", token });
       } else {
         // Invalid credentials
@@ -70,6 +36,10 @@ const LoginUser = async (req, res) => {
   }
 };
 
+const logoutUser = function (req, res) {
+  res.clearCookie("token");
+  res.status(200).send("Logged out");
+};
 
 const RegisterUser = async (req, res) => {
   try {
@@ -134,4 +104,10 @@ const SpecificUser = async (req, res) => {
   }
 };
 
-module.exports = { LoginUser, RegisterUser, getUsers, SpecificUser };
+module.exports = {
+  LoginUser,
+  RegisterUser,
+  getUsers,
+  SpecificUser,
+  logoutUser,
+};

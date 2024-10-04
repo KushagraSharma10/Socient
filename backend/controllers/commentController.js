@@ -82,9 +82,9 @@ const Post = require('../models/Post');
 
 const createComment = async (req, res) => {
   try {
-    const { content, userDp, sentiment } = req.body;
+    const { content, userDp, userId, sentiment } = req.body;
     const postId = req.params.id; // Assuming you send the postId in the URL
-    const userId = req.userId; // Assuming you extract this from a JWT
+   
 
     // Create a new comment
     const newComment = new Comment({
@@ -106,7 +106,5 @@ const createComment = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
-
-
 
 module.exports = createComment;

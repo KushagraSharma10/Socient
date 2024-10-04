@@ -32,11 +32,13 @@ const Post = ({ onClose, onPostCreate }) => {
                     'Authorization': `Bearer ${token}`
                 },
             });
-
+            
             if (response.status === 201) {
-                onPostCreate(response.data); // Pass the new post back to the homepage
-                onClose(); // Close the modal after submitting
+                const newPost = response.data;
+                onPostCreate(newPost); // Make sure newPost contains image URL
+                onClose(); // Close the modal
             }
+            
         } catch (error) {
             console.error('Error creating post:', error);
         }
