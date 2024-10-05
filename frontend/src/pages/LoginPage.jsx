@@ -1,13 +1,13 @@
 // src/components/Login.jsx
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';  // Added useNavigate for redirection
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const navigate = useNavigate();  // Initializing useNavigate
+    const navigate = useNavigate();
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -16,15 +16,25 @@ const LoginPage = () => {
                 email,
                 password,
             }, { withCredentials: true });
+
             console.log('Login successful:', response.data);
 
-            // Storing user data (token) in localStorage or state
-            const { token } = response.data;     // Assume the token is returned from your login response
-            localStorage.setItem('token', token);
-            // Redirecting to the HomePage
-            navigate('/home');  // Navigates to the HomePage route after successful login
-
+            // Check if the response contains a token and userId
+            const { token, userId } = response.data;
+            if (token && userId) {
+                // Store token and userId in localStorage
+                localStorage.setItem('token', token);
+                localStorage.setItem('userId', userId);
+    
+                // Redirect to the HomePage after successful login
+                navigate('/home');
+            } else {
+                console.error('Token or userId not received:', response.data);
+                setError('Login failed. Please try again.');
+            }
+    
         } catch (err) {
+            console.error('Login error:', err);
             setError('Login failed. Please check your credentials.');
         }
     };

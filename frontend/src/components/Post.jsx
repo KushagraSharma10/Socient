@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useEffect, useState } from 'react';
 import { FaTimes, FaImages } from 'react-icons/fa';
 import axios from 'axios';
 
@@ -6,6 +7,28 @@ const Post = ({ onClose, onPostCreate }) => {
     const [content, setContent] = useState('');
     const [image, setImage] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
+    const [userDp, setUserDp] = useState(null);
+    
+    const loggedInUserId = localStorage.getItem('userId');
+
+    const fetchUserProfilePicture = async (userId) => {
+        try {
+            const response = await axios.get(`http://localhost:3000/api/users/${userId}`);
+            console.log(response.data.profilePicture)
+            return response.data.profilePicture;
+        } catch (error) {
+            console.error("Error fetching user profile picture:", error);
+            return null;
+        }
+    };
+
+    useEffect(() => {
+        const getUserDp = async () => {
+            const profilePic = await fetchUserProfilePicture(loggedInUserId);
+            setUserDp(profilePic);
+        };
+        getUserDp();
+    }, [loggedInUserId]);
 
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
@@ -21,11 +44,10 @@ const Post = ({ onClose, onPostCreate }) => {
         const formData = new FormData();
         formData.append('content', content);
         formData.append('image', image);
+        formData.append('userDp', userDp);
 
         try {
-
             const token = localStorage.getItem('token');
-
             const response = await axios.post('http://localhost:3000/api/posts', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
@@ -35,8 +57,8 @@ const Post = ({ onClose, onPostCreate }) => {
             
             if (response.status === 201) {
                 const newPost = response.data;
-                onPostCreate(newPost); // Make sure newPost contains image URL
-                onClose(); // Close the modal
+                onPostCreate(newPost);
+                onClose();
             }
             
         } catch (error) {

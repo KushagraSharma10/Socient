@@ -1,27 +1,58 @@
 // src/components/Register.jsx
 import { useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const RegisterPage = () => {
+    const [profilePic, setProfilePic] = useState(null);
+    const [previewPic, setPreviewPic] = useState('');
+    const [fullName, setFullName] = useState('');
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
+    const navigate = useNavigate();
+
+    const handleProfilePicChange = (e) => {
+        const file = e.target.files[0];
+        setProfilePic(file);
+        setPreviewPic(URL.createObjectURL(file));
+    };
+
     const handleRegister = async (e) => {
         e.preventDefault();
         try {
-            const response = await axios.post('http://localhost:3000/api/users/register', {
-                username,
-                email,
-                password,
+            const formData = new FormData();
+            formData.append('profilePicture', profilePic);
+            formData.append('name', fullName);
+            formData.append('username', username);
+            formData.append('email', email);
+            formData.append('password', password);
+
+            const response = await axios.post('http://localhost:3000/api/users/register', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
             });
-            setSuccess('Registration successful! Please log in.');
-            setError('');
+
+            // If registration is successful, store token and userId
+            if (response.status === 201) {
+                const { token, userId } = response.data;
+
+                // Store token and userId in localStorage
+                localStorage.setItem('token', token);
+                localStorage.setItem('userId', userId);
+
+                setSuccess('Registration successful!');
+                setError('');
+                
+                // Redirect to homepage after registration
+                navigate('/home');
+            }
         } catch (err) {
-            console.error("Registration error:", err.response.data);
-            setError('Registration failed. Please try again.');
+            setError(err.response?.data?.message || 'Registration failed. Please try again.');
             setSuccess('');
         }
     };
@@ -33,6 +64,39 @@ const RegisterPage = () => {
                 {error && <p className="text-red-500">{error}</p>}
                 {success && <p className="text-green-500">{success}</p>}
                 <form onSubmit={handleRegister}>
+                    <div className="flex flex-col items-center mb-6">
+                        <div
+                            className="w-24 h-24 rounded-full bg-gray-200 cursor-pointer mb-4 relative"
+                            onClick={() => document.getElementById('profilePicInput').click()}
+                            style={{
+                                backgroundImage: `url(${previewPic || 'https://via.placeholder.com/150'})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                            }}
+                        >
+                            {!previewPic && <div className="absolute inset-0 flex items-center justify-center text-gray-500"></div>}
+                        </div>
+
+                        <input
+                            type="file"
+                            id="profilePicInput"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleProfilePicChange}
+                        />
+                    </div>
+
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium mb-1" htmlFor="fullName">Full Name</label>
+                        <input
+                            type="text"
+                            id="fullName"
+                            className="border border-gray-300 rounded-lg w-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                            required
+                        />
+                    </div>
                     <div className="mb-4">
                         <label className="block text-sm font-medium mb-1" htmlFor="username">Username</label>
                         <input

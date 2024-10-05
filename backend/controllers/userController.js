@@ -1,8 +1,9 @@
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const { generateToken } = require("../utils/generateToken");
+const imagekit = require("../config/imageKit");
 
-const   LoginUser = async (req, res) => {
+const LoginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
@@ -20,11 +21,12 @@ const   LoginUser = async (req, res) => {
       if (result) {
         // Password matched
         const token = generateToken(user);
-        res.cookie("token", token,{
-          expires: new Date(Date.now() + 60 * 60 * 1000), // Expires in 1 hour
-          httpOnly: true, // Only accessible via HTTP, not via JavaScript
+        res.cookie("token", token);
+        return res.json({
+          message: "Logged in successfully",
+          token,
+          userId: user._id,  // Send userId in the response
         });
-        return res.json({ message: "Logged in successfully", token });
       } else {
         // Invalid credentials
         return res.status(401).json({ message: "Invalid credentials" });
@@ -36,48 +38,72 @@ const   LoginUser = async (req, res) => {
   }
 };
 
-const logoutUser = function (req, res) {
-  res.clearCookie("token");
-  res.status(200).send("Logged out");
-};
 
 const RegisterUser = async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { name, bio, username, email, password } = req.body;
+    const file = req.file;
 
+    // Check if user already exists
     let user = await User.findOne({ email });
     if (user) {
-      return res.json("You already have an account, Please login");
+      return res.status(400).json({ message: "User already exists. Please log in." });
     }
 
-    // Generate salt and hash password
-    bcrypt.genSalt(10, function (err, salt) {
-      if (err) {
-        return res.status(500).send(err.message);
-      }
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-      bcrypt.hash(password, salt, async function (err, hash) {
-        if (err) {
-          return res.status(500).send(err.message);
-        }
-
-        // Create new user
-        let newUser = await User.create({
-          username,
-          email,
-          password: hash,
+    // Handle profile picture upload
+    let profilePictureUrl = "";
+    if (file) {
+      try {
+        const uploadedImage = await imagekit.upload({
+          file: req.file.buffer,
+          fileName: `${Date.now()}_${req.file.originalname}`,
+          folder: "/UsersDP",
         });
+        profilePictureUrl = uploadedImage.url;
+      } catch (uploadError) {
+        console.error("ImageKit upload failed:", uploadError);
+        return res.status(500).json({ message: "Image upload failed." });
+      }
+    }
 
-        // Generate token
-        let token = generateToken(newUser);
-        res.cookie("token", token);
-        return res.send("User created successfully");
-      });
+    // Create new user in MongoDB
+    const newUser = await User.create({
+      name,
+      bio,
+      profilePicture: profilePictureUrl,
+      username,
+      email,
+      password: hashedPassword,
+    });
+
+    // Generate token
+    const token = generateToken(newUser);
+
+    // Set cookie and respond
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "Strict",
+    });
+
+    return res.status(201).json({
+      message: "User created successfully",
+      userId: newUser._id,   // Send userId in the response
+      token,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Error during user registration:", err);
     return res.status(500).json({ message: "Server Error" });
   }
+};
+
+
+const logoutUser = function (req, res) {
+  res.clearCookie("token"); // Clear the authentication cookie
+  res.status(200).json({ message: "Logged out successfully" });
 };
 
 const getUsers = async (req, res) => {
@@ -93,10 +119,18 @@ const getUsers = async (req, res) => {
 const SpecificUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await User.findOne({ id });
+
+    // Validate if 'id' is a valid MongoDB ObjectId
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    const user = await User.findById(id).select("-password -tokens"); // Exclude sensitive fields
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+
     res.status(200).json(user);
   } catch (error) {
     console.error("Error fetching user:", error);
