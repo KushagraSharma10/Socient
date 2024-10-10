@@ -1,13 +1,14 @@
-
 import { useEffect, useState } from 'react';
 import { FaTimes, FaImages } from 'react-icons/fa';
+import { ImSpinner2 } from 'react-icons/im';
 import axios from 'axios';
 
-const Post = ({ onClose, onPostCreate }) => {
+const Post = ({ onClose, onPostCreate, isDarkMode }) => {
     const [content, setContent] = useState('');
     const [image, setImage] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [userDp, setUserDp] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
     
     const loggedInUserId = localStorage.getItem('userId');
 
@@ -41,6 +42,7 @@ const Post = ({ onClose, onPostCreate }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsLoading(true);
         const formData = new FormData();
         formData.append('content', content);
         formData.append('image', image);
@@ -63,21 +65,23 @@ const Post = ({ onClose, onPostCreate }) => {
             
         } catch (error) {
             console.error('Error creating post:', error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
-        <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-30 backdrop-blur-[.1vw]">
-            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-3xl">
+        <div className={`fixed inset-0 flex justify-center items-center ${isDarkMode ? 'bg-black bg-opacity-30' : 'bg-zinc-500 bg-opacity-30'} backdrop-blur-[.1vw]`}>
+            <div className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-zinc-300 text-black'} rounded-lg shadow-lg p-6 w-full max-w-3xl`}>
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold">Create Post</h2>
-                    <FaTimes className="cursor-pointer text-gray-600 hover:text-gray-800" onClick={onClose} />
+                    <FaTimes className={`cursor-pointer ${isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-600 hover:text-gray-800'}`} onClick={onClose} />
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="flex mt-4 space-x-4">
                         <textarea
-                            className="w-2/3 p-4 border border-gray-300 rounded-lg resize-none"
-                            rows="6"
+                            className={`w-2/3 p-4 border ${isDarkMode ? 'border-gray-600 bg-gray-700 text-white' : 'outline-none bg-zinc-200 text-black'} rounded-lg resize-none`}
+                            rows="5"
                             placeholder="What's on your mind?"
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
@@ -96,8 +100,8 @@ const Post = ({ onClose, onPostCreate }) => {
                     </div>
 
                     <div className="mt-4 flex items-center space-x-4">
-                        <label className="cursor-pointer flex items-center justify-center w-12 h-12 bg-gray-200 hover:bg-gray-300 rounded-full">
-                            <FaImages className="text-xl text-gray-700" />
+                        <label className={`cursor-pointer flex items-center justify-center w-12 h-12 ${isDarkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'} rounded-full`}>
+                            <FaImages className={`text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`} />
                             <input
                                 type="file"
                                 className="hidden"
@@ -108,9 +112,14 @@ const Post = ({ onClose, onPostCreate }) => {
 
                         <button
                             type="submit"
-                            className="w-[27vw] bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600"
+                            className="w-[27vw] bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 flex items-center justify-center"
+                            disabled={isLoading}
                         >
-                            Post
+                            {isLoading ? (
+                                <ImSpinner2 className="animate-spin text-white text-2xl" />
+                            ) : (
+                                'Post'
+                            )}
                         </button>
                     </div>
                 </form>

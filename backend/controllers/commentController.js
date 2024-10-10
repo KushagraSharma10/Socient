@@ -80,31 +80,31 @@ const Post = require('../models/Post');
 //   }
 // };
 
-const createComment = async (req, res) => {
-  try {
-    const { content, userDp, userId, sentiment } = req.body;
-    const postId = req.params.id; // Assuming you send the postId in the URL
+// const createComment = async (req, res) => {
+//   try {
+//     const { content, userDp, userId, sentiment } = req.body;
+//     const postId = req.params.id; // Assuming you send the postId in the URL
    
 
-    // Create a new comment
-    const newComment = new Comment({
-      postId,
-      userId,
-      content,
-      userDp: userDp || "https://via.placeholder.com/50",
-      sentiment,
-    });
+//     // Create a new comment
+//     const newComment = new Comment({
+//       postId,
+//       userId,
+//       content,
+//       userDp: userDp || "https://via.placeholder.com/50",
+//       sentiment,
+//     });
 
-    const savedComment = await newComment.save();
+//     const savedComment = await newComment.save();
 
-    // Push the new comment to the corresponding post's comments array
-    await Post.findByIdAndUpdate(postId, { $push: { comments: savedComment._id } });
+//     // Push the new comment to the corresponding post's comments array
+//     await Post.findByIdAndUpdate(postId, { $push: { comments: savedComment._id } });
 
-    res.status(201).json(savedComment);
-  } catch (error) {
-    console.error('Error creating comment:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
+//     res.status(201).json(savedComment);
+//   } catch (error) {
+//     console.error('Error creating comment:', error);
+//     res.status(500).json({ message: 'Server error' });
+//   }
+// };
 
-module.exports = createComment;
+// module.exports = createComment;
