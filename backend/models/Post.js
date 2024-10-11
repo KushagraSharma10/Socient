@@ -16,7 +16,7 @@ const postSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'  // Store user IDs who liked the post
 }],
-  image: [
+  images: [
     {
       type: String, // URL of the post images
     }

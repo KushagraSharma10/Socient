@@ -8,7 +8,7 @@ router.post("/login", LoginUser);
 
 router.post("/logout", logoutUser )
 
-router.post("/register", upload.single('profilePicture'), RegisterUser);
+router.post("/register", upload.uploadSingle, RegisterUser);
 
 router.get("/", getUsers);
 

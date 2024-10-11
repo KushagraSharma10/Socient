@@ -3,59 +3,6 @@ const router = express.Router();
 const Post = require("../models/Post"); // Adjust the path based on your file structure
 const imagekit = require("../config/imageKit"); // Import ImageKit configuration
 
-const createPost = async (req, res) => {
-  try {
-    const { content } = req.body;
-    const userId = req.userId; // Ensure this is correctly passed from middleware
-
-    // Check if userId exists
-    if (!userId) {
-      return res.status(403).json({ message: "User is not authenticated" });
-    }
-
-    // Initialize the image URL
-    let imageUrl = null;
-
-    // Handle file upload if an image is provided
-    if (req.file) {
-      try {
-        const uploadedImage = await imagekit.upload({
-          file: req.file.buffer, // File content
-          fileName: req.file.originalname, // Original file name
-          folder: "/posts", // Specify folder in ImageKit
-        });
-        imageUrl = uploadedImage.url; // Store image URL
-      } catch (uploadError) {
-        console.error("Image upload failed:", uploadError);
-        return res.status(500).json({ message: "Image upload failed" });
-      }
-    }
-
-    // Create a new post instance
-    const newPost = new Post({
-      userId, // Associate post with userId
-      content,
-      image: imageUrl, // Store ImageKit URL if image is uploaded
-      comments: [], // Initialize empty comments array
-    });
-
-    // Save the post in the database
-    const savedPost = await newPost.save();
-
-
-    // Populate user details in the saved post
-    const populatedPost = await Post.findById(savedPost._id).populate('userId', 'username profilePicture');
-
-    // Send the created post in the response
-    res.status(201).json(populatedPost);
-  } catch (error) {
-    console.error("Error creating post:", error);
-    res
-      .status(500)
-      .json({ message: "An error occurred while creating the post" });
-  }
-};
-
 // const createPost = async (req, res) => {
 //   try {
 //     const { content } = req.body;
@@ -66,37 +13,35 @@ const createPost = async (req, res) => {
 //       return res.status(403).json({ message: "User is not authenticated" });
 //     }
 
-//     // Initialize an array to store image URLs
-//     let imageUrls = [];
+//     // Initialize the image URL
+//     let imageUrl = null;
 
-//     // Check if multiple files are provided
-//     if (req.files && req.files.length > 0) {
+//     // Handle file upload if an image is provided
+//     if (req.file) {
 //       try {
-//         // Iterate over each file and upload it to ImageKit
-//         for (const file of req.files) {
-//           const uploadedImage = await imagekit.upload({
-//             file: file.buffer, // File content (buffer from multer memoryStorage)
-//             fileName: file.originalname, // Original file name
-//             folder: "/posts", // Specify folder in ImageKit
-//           });
-//           imageUrls.push(uploadedImage.url); // Store image URL in the array
-//         }
+//         const uploadedImage = await imagekit.upload({
+//           file: req.file.buffer, // File content
+//           fileName: req.file.originalname, // Original file name
+//           folder: "/posts", // Specify folder in ImageKit
+//         });
+//         imageUrl = uploadedImage.url; // Store image URL
 //       } catch (uploadError) {
 //         console.error("Image upload failed:", uploadError);
 //         return res.status(500).json({ message: "Image upload failed" });
 //       }
 //     }
 
-//     // Create a new post instance with multiple image URLs
+//     // Create a new post instance
 //     const newPost = new Post({
 //       userId, // Associate post with userId
 //       content,
-//       images: imageUrls, // Store array of ImageKit URLs
+//       image: imageUrl, // Store ImageKit URL if image is uploaded
 //       comments: [], // Initialize empty comments array
 //     });
 
 //     // Save the post in the database
 //     const savedPost = await newPost.save();
+
 
 //     // Populate user details in the saved post
 //     const populatedPost = await Post.findById(savedPost._id).populate('userId', 'username profilePicture');
@@ -105,9 +50,64 @@ const createPost = async (req, res) => {
 //     res.status(201).json(populatedPost);
 //   } catch (error) {
 //     console.error("Error creating post:", error);
-//     res.status(500).json({ message: "An error occurred while creating the post" });
+//     res
+//       .status(500)
+//       .json({ message: "An error occurred while creating the post" });
 //   }
 // };
+
+const createPost = async (req, res) => {
+  try {
+    const { content } = req.body;
+    const userId = req.userId; // Ensure this is correctly passed from middleware
+
+    // Check if userId exists
+    if (!userId) {
+      return res.status(403).json({ message: "User is not authenticated" });
+    }
+
+    // Initialize an array to store image URLs
+    let imageUrls = [];
+
+    // Check if multiple files are provided
+    if (req.files && req.files.length > 0) {
+      try {
+        // Iterate over each file and upload it to ImageKit
+        for (const file of req.files) {
+          const uploadedImage = await imagekit.upload({
+            file: file.buffer, // File content (buffer from multer memoryStorage)
+            fileName: file.originalname, // Original file name
+            folder: "/posts", // Specify folder in ImageKit
+          });
+          imageUrls.push(uploadedImage.url); // Store image URL in the array
+        }
+      } catch (uploadError) {
+        console.error("Image upload failed:", uploadError);
+        return res.status(500).json({ message: "Image upload failed" });
+      }
+    }
+
+    // Create a new post instance with multiple image URLs
+    const newPost = new Post({
+      userId, // Associate post with userId
+      content,
+      images: imageUrls, // Store array of ImageKit URLs
+      comments: [], // Initialize empty comments array
+    });
+
+    // Save the post in the database
+    const savedPost = await newPost.save();
+
+    // Populate user details in the saved post
+    const populatedPost = await Post.findById(savedPost._id).populate('userId', 'username profilePicture');
+
+    // Send the created post in the response
+    res.status(201).json(populatedPost);
+  } catch (error) {
+    console.error("Error creating post:", error);
+    res.status(500).json({ message: "An error occurred while creating the post" });
+  }
+};
 
 
 const getPosts = async (req, res) => {

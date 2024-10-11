@@ -209,8 +209,8 @@ const Post = ({ onClose, onPostCreate, isDarkMode }) => {
     };
 
     return (
-        <div className={`fixed inset-0 flex justify-center items-center ${isDarkMode ? 'bg-black bg-opacity-30' : 'bg-zinc-500 bg-opacity-30'} backdrop-blur-[.1vw]`}>
-            <div className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-zinc-300 text-black'} rounded-lg shadow-lg p-6 w-full max-w-3xl`}>
+        <div className={`fixed inset-0 z-50 flex justify-center items-center ${isDarkMode ? 'bg-black bg-opacity-30' : 'bg-zinc-500 bg-opacity-30'} backdrop-blur-[.1vw]`}>
+            <div className={`${isDarkMode ? 'bg-zinc-800 text-white' : 'bg-zinc-300 text-black'} rounded-lg shadow-lg p-6 w-full max-w-3xl`}>
                 <div className="flex justify-between items-center">
                     <h2 className="text-2xl font-bold">Create Post</h2>
                     <FaTimes className={`cursor-pointer ${isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-600 hover:text-gray-800'}`} onClick={onClose} />
@@ -218,8 +218,8 @@ const Post = ({ onClose, onPostCreate, isDarkMode }) => {
                 <form onSubmit={handleSubmit}>
                     <div className="flex mt-4 space-x-4">
                         <textarea
-                            className={`w-2/3 p-4 border ${isDarkMode ? 'border-gray-600 bg-gray-700 text-white' : 'outline-none bg-zinc-200 text-black'} rounded-lg resize-none`}
-                            rows="5"
+                            className={`w-2/3 p-4 border ${isDarkMode ? 'border-zinc-600 bg-zinc-700 text-white' : 'outline-none bg-zinc-200 text-black'} rounded-lg resize-none`}
+                            rows="5"    
                             placeholder="What's on your mind?"
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
@@ -242,7 +242,7 @@ const Post = ({ onClose, onPostCreate, isDarkMode }) => {
                     </div>
 
                     <div className="mt-4 flex items-center space-x-4">
-                        <label className={`cursor-pointer flex items-center justify-center w-12 h-12 ${isDarkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'} rounded-full`}>
+                        <label className={`cursor-pointer flex items-center justify-center w-12 h-12 ${isDarkMode ? 'bg-zinc-600 hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'} rounded-full`}>
                             <FaImages className={`text-xl ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`} />
                             <input
                                 type="file"
