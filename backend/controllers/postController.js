@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Post = require("../models/Post"); // Adjust the path based on your file structure
 const imagekit = require("../config/imageKit"); // Import ImageKit configuration
+const User = require("../models/User");
 
 // const createPost = async (req, res) => {
 //   try {
@@ -100,6 +101,14 @@ const createPost = async (req, res) => {
 
     // Populate user details in the saved post
     const populatedPost = await Post.findById(savedPost._id).populate('userId', 'username profilePicture');
+
+     // Update the user's posts array
+     await User.findByIdAndUpdate(
+      userId,
+      { $push: { posts: populatedPost._id } }, // Push the new post's ID into the user's posts array
+      { new: true }
+    );
+
 
     // Send the created post in the response
     res.status(201).json(populatedPost);

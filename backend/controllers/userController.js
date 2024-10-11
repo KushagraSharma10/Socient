@@ -2,6 +2,7 @@ const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const { generateToken } = require("../utils/generateToken");
 const imagekit = require("../config/imageKit");
+const { mongoose } = require("mongoose");
 
 const LoginUser = async (req, res) => {
   try {
@@ -120,12 +121,17 @@ const SpecificUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Validate if 'id' is a valid MongoDB ObjectId
-    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+    // Validate if 'id' is a valid MongoDB ObjectId using Mongoose's isValidObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid user ID" });
     }
 
-    const user = await User.findById(id).select("-password -tokens"); // Exclude sensitive fields
+    // Fetch the user, excluding sensitive fields like password and tokens
+    const user = await User.findById(id)
+      .select("-password -tokens")
+      .populate('posts', 'images content createdAt') // Assuming user has posts, adjust as per your schema
+      .populate('followers', 'username profilePicture') // Adjust this as needed
+      .populate('following', 'username profilePicture');
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });

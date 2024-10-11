@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  name:{
+  name: {
     type: String,
   },
   bio: {
@@ -24,6 +24,24 @@ const userSchema = new mongoose.Schema({
   profilePicture: {
     type: String,
   },
+  followers: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User', // Reference to other users who are following this user
+    },
+  ],
+  following: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User', // Reference to other users that this user is following
+    },
+  ],
+  posts: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Post', // Reference to posts created by the user
+    },
+  ],
   createdAt: {
     type: Date,
     default: Date.now,
