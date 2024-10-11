@@ -16,10 +16,11 @@ const postSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'  // Store user IDs who liked the post
 }],
-  image: {
-    type: String,
-    default: "" // URL of the post image
-  },
+  image: [
+    {
+      type: String, // URL of the post images
+    }
+  ], // Updated from a single image to an array of image URLs
   comments: [
     {
       type: mongoose.Schema.Types.ObjectId, // Store only reference IDs of comments for better scalability

@@ -6,7 +6,7 @@ const upload = require('../config/multer-config');
 const authenticateToken = require('../middlewares/authenticateToken');
 
 // Example route for creating a post
-router.post('/',authenticateToken, upload.single("image"), createPost);
+router.post('/',authenticateToken, upload.array('images', 10), createPost);
 
 // Example route for getting all posts
 router.get('/', getPosts);
