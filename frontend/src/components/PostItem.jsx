@@ -5,6 +5,7 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/swiper-bundle.css';
 
 const PostItem = memo(({ post, handleLikeToggle, handleCommentToggle, handleCommentChange, handleCommentSubmit, isDarkMode }) => {
+    
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const swiperRef = useRef(null); // Ref to control Swiper
 

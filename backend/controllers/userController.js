@@ -40,9 +40,72 @@ const LoginUser = async (req, res) => {
 };
 
 
+// const RegisterUser = async (req, res) => {
+//   try {
+//     const { name, bio, username, email, password, followers,  following } = req.body;
+//     const file = req.file;
+
+//     // Check if user already exists
+//     let user = await User.findOne({ email });
+//     if (user) {
+//       return res.status(400).json({ message: "User already exists. Please log in." });
+//     }
+
+//     // Hash password
+//     const salt = await bcrypt.genSalt(10);
+//     const hashedPassword = await bcrypt.hash(password, salt);
+
+//     // Handle profile picture upload
+//     let profilePictureUrl = "";
+//     if (file) {
+//       try {
+//         const uploadedImage = await imagekit.upload({
+//           file: req.file.buffer,
+//           fileName: `${Date.now()}_${req.file.originalname}`,
+//           folder: "/UsersDP",
+//         });
+//         profilePictureUrl = uploadedImage.url;
+//       } catch (uploadError) {
+//         console.error("ImageKit upload failed:", uploadError);
+//         return res.status(500).json({ message: "Image upload failed." });
+//       }
+//     }
+
+//     // Create new user in MongoDB
+//     const newUser = await User.create({
+//       name,
+//       bio,
+//       profilePicture: profilePictureUrl,
+//       username,
+//       followers,
+//       following,
+//       email,
+//       password: hashedPassword,
+//     });
+
+//     // Generate token
+//     const token = generateToken(newUser);
+
+//     // Set cookie and respond
+//     res.cookie("token", token, {
+//       httpOnly: true,
+//       sameSite: "Strict",
+//     });
+
+//     return res.status(201).json({
+//       message: "User created successfully",
+//       userId: newUser._id,   // Send userId in the response
+//       token,
+//     });
+//   } catch (err) {
+//     console.error("Error during user registration:", err);
+//     return res.status(500).json({ message: "Server Error" });
+//   }
+// };
+
 const RegisterUser = async (req, res) => {
   try {
-    const { name, bio, username, email, password } = req.body;
+    const { name, bio, username, email, password, followers, following } = req.body;
     const file = req.file;
 
     // Check if user already exists
@@ -59,14 +122,20 @@ const RegisterUser = async (req, res) => {
     let profilePictureUrl = "";
     if (file) {
       try {
+        console.log("Attempting to upload image...");
+        
+        // Check buffer size to confirm it's populated
+        console.log("Buffer size:", file.buffer.length);
+
         const uploadedImage = await imagekit.upload({
-          file: req.file.buffer,
-          fileName: `${Date.now()}_${req.file.originalname}`,
+          file: file.buffer, // file.buffer from multer
+          fileName: `${Date.now()}_${file.originalname}`,
           folder: "/UsersDP",
         });
+
         profilePictureUrl = uploadedImage.url;
       } catch (uploadError) {
-        console.error("ImageKit upload failed:", uploadError);
+        console.error("ImageKit upload failed:", uploadError.message || uploadError);
         return res.status(500).json({ message: "Image upload failed." });
       }
     }
@@ -77,6 +146,8 @@ const RegisterUser = async (req, res) => {
       bio,
       profilePicture: profilePictureUrl,
       username,
+      followers,
+      following,
       email,
       password: hashedPassword,
     });
@@ -92,7 +163,7 @@ const RegisterUser = async (req, res) => {
 
     return res.status(201).json({
       message: "User created successfully",
-      userId: newUser._id,   // Send userId in the response
+      userId: newUser._id,
       token,
     });
   } catch (err) {
@@ -100,7 +171,6 @@ const RegisterUser = async (req, res) => {
     return res.status(500).json({ message: "Server Error" });
   }
 };
-
 
 const logoutUser = function (req, res) {
   res.clearCookie("token"); // Clear the authentication cookie
@@ -144,10 +214,74 @@ const SpecificUser = async (req, res) => {
   }
 };
 
+// Follow a user
+const followUser = async (req, res) => {
+  try {
+      const { userId } = req.params; // User to be followed
+      const currentUser = req.user;  // Assuming `req.user` contains the authenticated user's ID
+
+      if (userId === currentUser._id.toString()) {
+          return res.status(400).json({ message: "You can't follow yourself" });
+      }
+
+      // Find both users
+      const userToFollow = await User.findById(userId);
+      const currentUserDoc = await User.findById(currentUser._id);
+
+      // Check if already following
+      if (currentUserDoc.following.includes(userId)) {
+          return res.status(400).json({ message: "You're already following this user" });
+      }
+
+      // Update following/followers lists
+      currentUserDoc.following.push(userId);
+      userToFollow.followers.push(currentUser._id);
+
+      await currentUserDoc.save();
+      await userToFollow.save();
+
+      res.status(200).json({ message: 'Followed successfully' });
+  } catch (error) {
+      res.status(500).json({ error: error.message });
+  }
+};
+
+// Unfollow a user
+const unfollowUser = async (req, res) => {
+  try {
+      const { userId } = req.params;
+      const currentUser = req.user;
+
+      const userToUnfollow = await User.findById(userId);
+      const currentUserDoc = await User.findById(currentUser._id);
+
+      if (!currentUserDoc.following.includes(userId)) {
+          return res.status(400).json({ message: "You're not following this user" });
+      }
+
+      // Remove from following/followers lists
+      currentUserDoc.following = currentUserDoc.following.filter(
+          (id) => id.toString() !== userId
+      );
+      userToUnfollow.followers = userToUnfollow.followers.filter(
+          (id) => id.toString() !== currentUser._id.toString()
+      );
+
+      await currentUserDoc.save();
+      await userToUnfollow.save();
+
+      res.status(200).json({ message: 'Unfollowed successfully' });
+  } catch (error) {
+      res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   LoginUser,
   RegisterUser,
   getUsers,
   SpecificUser,
   logoutUser,
+  followUser,
+  unfollowUser,
 };

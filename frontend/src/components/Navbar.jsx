@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useRef } from 'react';
-import { FaHome, FaMoon, FaPlus, FaSun } from 'react-icons/fa';
+import { FaHome, FaMoon, FaPlus, FaSun, FaBell } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { gsap } from 'gsap';
 
@@ -42,6 +42,10 @@ const Navbar = memo(({ user, handleLogout, handleOpenModal, isDarkMode, toggleDa
                     />
                     <span>Profile</span>
                 </Link>
+                <Link to="/notifications" className="flex items-center gap-2 text-lg hover:text-blue-500 transition-colors duration-300" ref={addToRefs}>
+                    <FaBell className={`text-lg ${isDarkMode ? 'text-white' : 'text-black'}`} />
+                    <span>Notifications</span>
+                </Link>
                 <div className='flex items-center gap-2 cursor-pointer hover:text-blue-500 transition-colors duration-300' ref={addToRefs} onClick={handleOpenModal}>
                     <FaPlus className="text-lg" />
                     <span>Create Post</span>
@@ -52,7 +56,7 @@ const Navbar = memo(({ user, handleLogout, handleOpenModal, isDarkMode, toggleDa
                     {isDarkMode ? <FaSun className="text-yellow-500" /> : <FaMoon className="text-black" />}
                 </button>
 
-                <button onClick={handleLogout} className="text-md bg-red-500 text-white px-4 py-2 rounded-lg mt-8 hover:bg-red-600 transition-colors duration-300" ref={addToRefs}>
+                <button onClick={handleLogout} className="text-sm bg-red-500 px-2 py-3 text-white rounded-lg mt-8 hover:bg-red-600 transition-colors duration-300" ref={addToRefs}>
                     Logout
                 </button>
             </div>
