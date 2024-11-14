@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useRef } from 'react';
-import { FaHome, FaMoon, FaPlus, FaSun, FaBell } from 'react-icons/fa';
+import { FaHome, FaMoon, FaPlus, FaSun, FaBell, FaEnvelope, FaFacebookMessenger } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { gsap } from 'gsap';
 
@@ -46,6 +46,10 @@ const Navbar = memo(({ user, handleLogout, handleOpenModal, isDarkMode, toggleDa
                     <FaBell className={`text-lg ${isDarkMode ? 'text-white' : 'text-black'}`} />
                     <span>Notifications</span>
                 </Link>
+                <Link to="/messanger" className="flex items-center gap-2 text-lg hover:text-blue-500 transition-colors duration-300" ref={addToRefs}>
+                    <FaFacebookMessenger className="text-lg" />
+                    <span>Messages</span>
+                </Link>
                 <div className='flex items-center gap-2 cursor-pointer hover:text-blue-500 transition-colors duration-300' ref={addToRefs} onClick={handleOpenModal}>
                     <FaPlus className="text-lg" />
                     <span>Create Post</span>
@@ -63,5 +67,7 @@ const Navbar = memo(({ user, handleLogout, handleOpenModal, isDarkMode, toggleDa
         </div>
     );
 });
+
+Navbar.displayName = "Navbar";
 
 export default Navbar;

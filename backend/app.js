@@ -10,6 +10,7 @@ const expressSession = require("express-session");
 
 
 require('dotenv').config();
+
 // Connect to the database
 connectDB();
 

@@ -259,7 +259,6 @@ function HomePage() {
         localStorage.setItem("isDarkMode", JSON.stringify(!isDarkMode));
     };
 
-    // Follow handler
     const handleFollow = useCallback(async (UserId) => {
         try {
             const token = localStorage.getItem("token");
@@ -270,19 +269,18 @@ function HomePage() {
                     headers: { Authorization: `Bearer ${token}` },
                 }
             );
-
+    
             if (response.status === 200) {
                 setUser((prevUser) => ({
                     ...prevUser,
-                    following: [...prevUser.following, followUserId],
+                    following: [...prevUser.following, UserId], // Corrected variable name
                 }));
             }
         } catch (error) {
             console.error("Error following user:", error);
         }
-    }, []);
-
-    // Unfollow handler
+    }, [setUser]);
+    
     const handleUnfollow = useCallback(async (UserId) => {
         try {
             const token = localStorage.getItem("token");
@@ -293,18 +291,18 @@ function HomePage() {
                     headers: { Authorization: `Bearer ${token}` },
                 }
             );
-
+    
             if (response.status === 200) {
                 setUser((prevUser) => ({
                     ...prevUser,
-                    following: prevUser.following.filter((id) => id !== unfollowUserId),
+                    following: prevUser.following.filter((id) => id !== UserId), // Corrected variable name
                 }));
             }
         } catch (error) {
             console.error("Error unfollowing user:", error);
         }
-    }, []);
-
+    }, [setUser]);
+    
     return (
         <div
             className={`flex ${isDarkMode ? "bg-black text-white" : "bg-gray-100 text-gray-900"

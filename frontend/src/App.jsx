@@ -3,6 +3,7 @@ import HomePage from "./pages/HomePage"
 import LoginPage from "./pages/LoginPage"
 import RegisterPage from "./pages/RegisterPage"
 import UserProfile from "./pages/UserProfile"
+import Messenger from "./pages/Messenger"
 
 const App = () => {
 
@@ -12,6 +13,7 @@ const App = () => {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/home" element={<HomePage />} />
       <Route path="/profile/:userId" element={<UserProfile />} />
+      <Route path="/messanger" element={<Messenger />} />
     </Routes>
   )
 }
