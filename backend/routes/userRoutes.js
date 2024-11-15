@@ -15,7 +15,7 @@ router.get("/", getUsers);
 
 router.get("/:id", SpecificUser)
 
-router.get("/notification", authenticateUser, notifyUser)
+router.get("/notifications", authenticateUser, notifyUser)
 
 router.put('/:userId/follow', authenticateUser, followUser);
 

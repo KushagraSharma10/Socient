@@ -367,6 +367,7 @@ const unfollowUser = async (req, res) => {
 const notifyUser = async (req, res) => {
   try {
     const notifications = await Notification.find({ user: req.userId }).populate('sender', 'username profilePicture').sort({ createdAt: -1 });
+    console.log("Fetching notifications for user ID:", req.userId);
     res.status(200).json(notifications);
   } catch (error) {
     res.status(500).json({ error: error.message });
