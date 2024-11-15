@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const { generateToken } = require("../utils/generateToken");
 const imagekit = require("../config/imageKit");
 const { mongoose } = require("mongoose");
+const Notification = require("../models/Notifications");
 
 const LoginUser = async (req, res) => {
   try {
@@ -26,7 +27,7 @@ const LoginUser = async (req, res) => {
         return res.json({
           message: "Logged in successfully",
           token,
-          userId: user._id,  // Send userId in the response
+          userId: user._id, // Send userId in the response
         });
       } else {
         // Invalid credentials
@@ -38,7 +39,6 @@ const LoginUser = async (req, res) => {
     return res.status(500).json({ message: "Server Error" });
   }
 };
-
 
 // const RegisterUser = async (req, res) => {
 //   try {
@@ -105,13 +105,16 @@ const LoginUser = async (req, res) => {
 
 const RegisterUser = async (req, res) => {
   try {
-    const { name, bio, username, email, password, followers, following } = req.body;
+    const { name, bio, username, email, password, followers, following } =
+      req.body;
     const file = req.file;
 
     // Check if user already exists
     let user = await User.findOne({ email });
     if (user) {
-      return res.status(400).json({ message: "User already exists. Please log in." });
+      return res
+        .status(400)
+        .json({ message: "User already exists. Please log in." });
     }
 
     // Hash password
@@ -123,7 +126,7 @@ const RegisterUser = async (req, res) => {
     if (file) {
       try {
         console.log("Attempting to upload image...");
-        
+
         // Check buffer size to confirm it's populated
         console.log("Buffer size:", file.buffer.length);
 
@@ -135,7 +138,10 @@ const RegisterUser = async (req, res) => {
 
         profilePictureUrl = uploadedImage.url;
       } catch (uploadError) {
-        console.error("ImageKit upload failed:", uploadError.message || uploadError);
+        console.error(
+          "ImageKit upload failed:",
+          uploadError.message || uploadError
+        );
         return res.status(500).json({ message: "Image upload failed." });
       }
     }
@@ -199,9 +205,9 @@ const SpecificUser = async (req, res) => {
     // Fetch the user, excluding sensitive fields like password and tokens
     const user = await User.findById(id)
       .select("-password -tokens")
-      .populate('posts', 'images content createdAt') // Assuming user has posts, adjust as per your schema
-      .populate('followers', 'username profilePicture') // Adjust this as needed
-      .populate('following', 'username profilePicture');
+      .populate("posts", "images content createdAt") // Assuming user has posts, adjust as per your schema
+      .populate("followers", "username profilePicture") // Adjust this as needed
+      .populate("following", "username profilePicture");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -254,92 +260,118 @@ const SpecificUser = async (req, res) => {
 
 const followUser = async (req, res) => {
   try {
-      const { userId } = req.params; // User to be followed
-      const currentUserId = req.userId;  // Authenticated user's ID
+    const { userId } = req.params; // User to be followed
+    const currentUserId = req.userId; // Authenticated user's ID
 
-      // Check if authenticated userId exists
-      if (!currentUserId) {
-          return res.status(401).json({ message: "Unauthorized: User ID missing" });
-      }
-      
-      // Check if user is trying to follow themselves
-      if (userId === currentUserId) {
-          return res.status(400).json({ message: "You can't follow yourself" });
-      }
+    // Check if authenticated userId exists
+    if (!currentUserId) {
+      return res.status(401).json({ message: "Unauthorized: User ID missing" });
+    }
 
-      // Fetch documents from the database
-      const userToFollow = await User.findById(userId);
-      const currentUserDoc = await User.findById(currentUserId);
+    // Check if user is trying to follow themselves
+    if (userId === currentUserId) {
+      return res.status(400).json({ message: "You can't follow yourself" });
+    }
 
-      // Log the fetched user documents
-      console.log("User to Follow:", userToFollow);
-      console.log("Current User Doc:", currentUserDoc);
+    // Fetch documents from the database
+    const userToFollow = await User.findById(userId);
+    const currentUserDoc = await User.findById(currentUserId);
 
-      if (!userToFollow) {
-          return res.status(404).json({ message: "User to follow not found" });
-      }
+    // Log the fetched user documents
+    console.log("User to Follow:", userToFollow);
+    console.log("Current User Doc:", currentUserDoc);
 
-      if (!currentUserDoc) {
-          return res.status(404).json({ message: "Authenticated user not found" });
-      }
+    if (!userToFollow) {
+      return res.status(404).json({ message: "User to follow not found" });
+    }
 
-      // Check if already following
-      if (currentUserDoc.following.includes(userId)) {
-          return res.status(400).json({ message: "You're already following this user" });
-      }
+    if (!currentUserDoc) {
+      return res.status(404).json({ message: "Authenticated user not found" });
+    }
 
-      // Update following/followers lists
-      currentUserDoc.following.push(userId);
-      userToFollow.followers.push(currentUserId);
+    // Check if already following
+    if (currentUserDoc.following.includes(userId)) {
+      return res
+        .status(400)
+        .json({ message: "You're already following this user" });
+    }
 
-      // Save the updated documents
-      await currentUserDoc.save();
-      await userToFollow.save();
+    // Update following/followers lists
+    currentUserDoc.following.push(userId);
+    userToFollow.followers.push(currentUserId);
 
-      // Respond with success and the updated documents for debugging
-      res.status(200).json({ 
-          message: 'Followed successfully',
-          currentUser: currentUserDoc,
-          followedUser: userToFollow
-      });
+    // Save the updated documents
+    await currentUserDoc.save();
+    await userToFollow.save();
 
+    // Create a notification for the user being followed
+    const notification = new Notification({
+      user: userId,
+      sender: currentUserId,
+      type: "follow",
+    });
+
+    await notification.save();
+
+
+    // Respond with success and the updated documents for debugging
+    res.status(200).json({
+      message: "Followed successfully",
+      currentUser: currentUserDoc,
+      followedUser: userToFollow,
+      notification,
+    });
   } catch (error) {
-      // Log the error message for debugging
-      console.error("Error in followUser:", error);
-      res.status(500).json({ error: error.message });
+    // Log the error message for debugging
+    console.error("Error in followUser:", error);
+    res.status(500).json({ error: error.message });
   }
 };
-
 
 const unfollowUser = async (req, res) => {
   try {
-      const { userId } = req.params;
-      const currentUserId = req.userId;
+    const { userId } = req.params;
+    const currentUserId = req.userId;
 
-      const userToUnfollow = await User.findById(userId);
-      const currentUserDoc = await User.findById(currentUserId);
+    const userToUnfollow = await User.findById(userId);
+    const currentUserDoc = await User.findById(currentUserId);
 
-      if (!userToUnfollow) return res.status(404).json({ message: "User to unfollow not found" });
+    if (!userToUnfollow)
+      return res.status(404).json({ message: "User to unfollow not found" });
 
-      // Check if already not following
-      if (!currentUserDoc.following.includes(userId)) {
-          return res.status(400).json({ message: "You're not following this user" });
-      }
+    // Check if already not following
+    if (!currentUserDoc.following.includes(userId)) {
+      return res
+        .status(400)
+        .json({ message: "You're not following this user" });
+    }
 
-      // Remove from following/followers lists
-      currentUserDoc.following = currentUserDoc.following.filter(id => id.toString() !== userId);
-      userToUnfollow.followers = userToUnfollow.followers.filter(id => id.toString() !== currentUserId);
+    // Remove from following/followers lists
+    currentUserDoc.following = currentUserDoc.following.filter(
+      (id) => id.toString() !== userId
+    );
+    userToUnfollow.followers = userToUnfollow.followers.filter(
+      (id) => id.toString() !== currentUserId
+    );
 
-      await currentUserDoc.save();
-      await userToUnfollow.save();
+    await currentUserDoc.save();
+    await userToUnfollow.save();
 
-      res.status(200).json({ message: 'Unfollowed successfully' });
+    res.status(200).json({ message: "Unfollowed successfully" });
   } catch (error) {
-      console.error("Error in unfollowUser:", error);
-      res.status(500).json({ error: error.message });
+    console.error("Error in unfollowUser:", error);
+    res.status(500).json({ error: error.message });
   }
 };
 
+const notifyUser = async (req, res) => {
+  try {
+    const notifications = await Notification.find({ user: req.userId }).populate('sender', 'username profilePicture').sort({ createdAt: -1 });
+    res.status(200).json(notifications);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
 
 module.exports = {
   LoginUser,
@@ -349,4 +381,5 @@ module.exports = {
   logoutUser,
   followUser,
   unfollowUser,
+  notifyUser,
 };
