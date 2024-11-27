@@ -42,6 +42,8 @@ const userSchema = new mongoose.Schema({
       ref: 'Post', // Reference to posts created by the user
     },
   ],
+  notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Notification' }],
+
   createdAt: {
     type: Date,
     default: Date.now,

@@ -4,6 +4,7 @@ const { generateToken } = require("../utils/generateToken");
 const imagekit = require("../config/imageKit");
 const { mongoose } = require("mongoose");
 const Notification = require("../models/Notifications");
+const { emitNotification } = require("../config/socketio");
 
 const LoginUser = async (req, res) => {
   try {
@@ -220,41 +221,85 @@ const SpecificUser = async (req, res) => {
   }
 };
 
-// // Follow a user
 // const followUser = async (req, res) => {
 //   try {
-//       const { userId } = req.params; // User to be followed
-//       const currentUserId = req.userId;  // Authenticated user's ID
+//     const { userId } = req.params; // User to be followed
+//     const currentUserId = req.userId; // Authenticated user's ID
 
-//       if (userId === currentUserId) {
-//           return res.status(400).json({ message: "You can't follow yourself" });
-//       }
+//     // Check if authenticated userId exists
+//     if (!currentUserId) {
+//       return res.status(401).json({ message: "Unauthorized: User ID missing" });
+//     }
 
-//       const userToFollow = await User.findById(userId);
-//       const currentUserDoc = await User.findById(currentUserId);
+//     // Check if user is trying to follow themselves
+//     if (userId === currentUserId) {
+//       return res.status(400).json({ message: "You can't follow yourself" });
+//     }
 
-//       if (!userToFollow) {
-//           return res.status(404).json({ message: "User to follow not found" });
-//       }
+//     // Fetch documents from the database
+//     const userToFollow = await User.findById(userId);
+//     const currentUserDoc = await User.findById(currentUserId);
 
-//       // Check if already following
-//       if (currentUserDoc.following.includes(userId)) {
-//           return res.status(400).json({ message: "You're already following this user" });
-//       }
+//     // Log the fetched user documents
+//     console.log("User to Follow:", userToFollow);
+//     console.log("Current User Doc:", currentUserDoc);
 
-//       // Update following/followers lists
-//       currentUserDoc.following.push(userId);
-//       userToFollow.followers.push(currentUserId);
+//     if (!userToFollow) {
+//       return res.status(404).json({ message: "User to follow not found" });
+//     }
 
-//       await currentUserDoc.save();
-//       await userToFollow.save();
+//     if (!currentUserDoc) {
+//       return res.status(404).json({ message: "Authenticated user not found" });
+//     }
 
-//       res.status(200).json({ message: 'Followed successfully' });
+//     // Check if already following
+//     if (currentUserDoc.following.includes(userId)) {
+//       return res
+//         .status(400)
+//         .json({ message: "You're already following this user" });
+//     }
 
-//       console.log(userToFollow)
-//       console.log(currentUserDoc)
+//     // Update following/followers lists
+//     currentUserDoc.following.push(userId);
+//     userToFollow.followers.push(currentUserId);
+
+//     // Save the updated documents
+//     await currentUserDoc.save();
+//     await userToFollow.save();
+
+//     // Create a notification for the user being followed
+//     const notification = new Notification({
+//       user: userId,
+//       sender: currentUserId,
+//       type: "follow",
+//       message: `${currentUserDoc.username} started following you`,
+//       createdAt: new Date(),
+//     });
+
+//     await notification.save();
+
+//     // Emit real-time notification
+//     emitNotification(userId, {
+//       sender: {
+//         username: currentUserDoc.username,
+//         profilePicture: currentUserDoc.profilePicture,
+//       },
+//       type: "follow",
+//       message: `${currentUserDoc.username} started following you`,
+//       createdAt: new Date(),
+//     });
+
+//     // Respond with success and the updated documents for debugging
+//     res.status(200).json({
+//       message: "Followed successfully",
+//       currentUser: currentUserDoc,
+//       followedUser: userToFollow,
+//       notification,
+//     });
 //   } catch (error) {
-//       res.status(500).json({ error: error.message });
+//     // Log the error message for debugging
+//     console.error("Error in followUser:", error);
+//     res.status(500).json({ error: error.message });
 //   }
 // };
 
@@ -276,10 +321,6 @@ const followUser = async (req, res) => {
     // Fetch documents from the database
     const userToFollow = await User.findById(userId);
     const currentUserDoc = await User.findById(currentUserId);
-
-    // Log the fetched user documents
-    console.log("User to Follow:", userToFollow);
-    console.log("Current User Doc:", currentUserDoc);
 
     if (!userToFollow) {
       return res.status(404).json({ message: "User to follow not found" });
@@ -305,21 +346,37 @@ const followUser = async (req, res) => {
     await userToFollow.save();
 
     // Create a notification for the user being followed
+    const notificationMessage = `${currentUserDoc.username} started following you`;
     const notification = new Notification({
       user: userId,
       sender: currentUserId,
       type: "follow",
+      message: notificationMessage,
     });
 
-    await notification.save();
+    const savedNotification = await notification.save();
 
+    // Update the notifications array in the user being followed
+    userToFollow.notifications.push(savedNotification._id);
+    await userToFollow.save();
+
+    // Emit real-time notification
+    emitNotification(userId, {
+      sender: {
+        username: currentUserDoc.username,
+        profilePicture: currentUserDoc.profilePicture,
+      },
+      type: "follow",
+      message: notificationMessage,
+      createdAt: new Date(),
+    });
 
     // Respond with success and the updated documents for debugging
     res.status(200).json({
       message: "Followed successfully",
       currentUser: currentUserDoc,
       followedUser: userToFollow,
-      notification,
+      notification: savedNotification,
     });
   } catch (error) {
     // Log the error message for debugging
@@ -327,6 +384,7 @@ const followUser = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 const unfollowUser = async (req, res) => {
   try {
@@ -364,15 +422,99 @@ const unfollowUser = async (req, res) => {
   }
 };
 
+// const notifyUser = async (req, res) => {
+//   try {
+//       if (!req.userId) {
+//           return res.status(401).json({ message: 'Unauthorized: Missing user ID' });
+//       }
+
+//       console.log("Fetching notifications for user ID:", req.userId);
+
+//       const notifications = await Notification.find({ user: req.userId })
+//           .populate('sender', 'username profilePicture')
+//           .sort({ createdAt: -1 });
+
+//       res.status(200).json(notifications);
+//   } catch (error) {
+//       console.error("Error fetching notifications:", error);
+//       res.status(500).json({ error: error.message });
+//   }
+// };
+
 const notifyUser = async (req, res) => {
   try {
-    const notifications = await Notification.find({ user: req.userId }).populate('sender', 'username profilePicture').sort({ createdAt: -1 });
-    console.log("Fetching notifications for user ID:", req.userId);
-    res.status(200).json(notifications);
+    // Find the user who will receive the notification
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Create a new notification in the Notification model
+    const newNotification = new Notification({
+      user: user._id,
+      sender: req.body.senderId, // Sender's ID passed in the request
+      type: req.body.type || 'follow', // Notification type, default to "follow"
+      message: req.body.message || 'A new notification for you!', // Custom or default message
+    });
+
+    await newNotification.save(); // Save the notification in the database
+
+    // Add the notification to the user's notifications array
+    user.notifications.push(newNotification._id);
+    await user.save();
+
+    res.status(200).json({ message: 'Notification added successfully', notification: newNotification });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error adding notification:', error);
+    res.status(500).json({ message: 'Server error' });
   }
-}
+};
+
+// const getUserNotifications = async (req, res) => {
+//   try {
+//     console.log('User ID:', req.userId);
+//     const user = await User.findById(req.userId).populate({
+//       path: 'notifications',
+//       populate: { path: 'sender', select: 'name username' }, // Optionally populate sender details
+//     });
+
+//     if (!user) {
+//       return res.status(404).json({ message: 'User not found' });
+//     }
+
+//     res.status(200).json({ notifications: user.notifications });
+//   } catch (error) {
+//     console.error('Error fetching notifications:', error);
+//     res.status(500).json({ message: 'Server error' });
+//   }
+// };
+
+
+const getUserNotifications = async (req, res) => {
+  try {
+    // Debug log
+    console.log("Received user ID in getUserNotifications:", req.userId);
+
+    // Validate user ID format
+    if (!mongoose.isValidObjectId(req.userId)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    const user = await User.findById(req.userId).populate({
+      path: "notifications",
+      populate: { path: "sender", select: "name username" }, // Optionally populate sender details
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ notifications: user.notifications });
+  } catch (error) {
+    console.error("Error fetching notifications:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 module.exports = {
   LoginUser,
@@ -383,4 +525,5 @@ module.exports = {
   followUser,
   unfollowUser,
   notifyUser,
+  getUserNotifications,
 };

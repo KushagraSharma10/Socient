@@ -104,13 +104,27 @@
 
 // export default Notification;
 
-
-// src/pages/NotificationsPage.jsx
-
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
-const NotificationsPage = () => {
+const decodeJWT = (token) => {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+            atob(base64)
+                .split('')
+                .map((c) => `%${('00' + c.charCodeAt(0).toString(16)).slice(-2)}`)
+                .join('')
+        );
+        return JSON.parse(jsonPayload);
+    } catch (error) {
+        console.error("Invalid JWT:", error);
+        return null;
+    }
+};
+
+const Notification = () => {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -118,12 +132,28 @@ const NotificationsPage = () => {
         const fetchNotifications = async () => {
             try {
                 const token = localStorage.getItem("token");
+                if (!token) {
+                    console.error("No token found in localStorage");
+                    return;
+                }
+
+                const decodedToken = decodeJWT(token);
+                if (!decodedToken) {
+                    throw new Error("Failed to decode token");
+                }
+
+                console.log("Decoded Token:", decodedToken); // Debugging line
+                const userId = decodedToken.id;
+
+                // Make the API call
                 const response = await axios.get('http://localhost:3000/api/users/notifications', {
-                    headers: { Authorization: `Bearer ${token}` }
+                    headers: { Authorization: `Bearer ${token}` },
                 });
+
+                console.log("Fetched Notifications:", response.data); // Debugging line
                 setNotifications(response.data);
             } catch (error) {
-                console.error("Error fetching notifications:", error);
+                console.error("Error fetching notifications:", error.response?.data || error.message);
             } finally {
                 setLoading(false);
             }
@@ -131,7 +161,6 @@ const NotificationsPage = () => {
 
         fetchNotifications();
     }, []);
-
     return (
         <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4">
             <div className="w-full max-w-3xl bg-white shadow-md rounded-lg p-6">
@@ -167,4 +196,4 @@ const NotificationsPage = () => {
     );
 };
 
-export default NotificationsPage;
+export default Notification;

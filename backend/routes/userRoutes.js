@@ -1,5 +1,5 @@
 const express = require('express');
-const { RegisterUser, LoginUser, getUsers, SpecificUser, logoutUser, followUser, unfollowUser, notifyUser } = require('../controllers/userController');
+const { RegisterUser, LoginUser, getUsers, SpecificUser, logoutUser, followUser, unfollowUser, notifyUser, getUserNotifications } = require('../controllers/userController');
 const authenticateToken = require('../middlewares/authenticateToken');
 const upload = require('../config/multer-config');
 const authenticateUser = require('../middlewares/authenticateUser');
@@ -15,7 +15,9 @@ router.get("/", getUsers);
 
 router.get("/:id", SpecificUser)
 
-router.get("/notifications", authenticateUser, notifyUser)
+router.get("/notifications", authenticateUser, getUserNotifications)
+
+router.post("/notifications", authenticateUser, notifyUser)
 
 router.put('/:userId/follow', authenticateUser, followUser);
 

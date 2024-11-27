@@ -4,15 +4,23 @@ const commentRoutes = require("./routes/commentRoutes");
 const postRoutes = require("./routes/postRoutes");
 const userRoutes = require("./routes/userRoutes");  
 const app = express();
+const http = require("http");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const expressSession = require("express-session");
+const { initializeSocket } = require("./config/socketio");
+const server = http.createServer(app); // Create server for Socket.IO
+
 
 
 require('dotenv').config();
 
 // Connect to the database
 connectDB();
+
+
+// Initialize Socket.IO
+initializeSocket(server);
 
 // Enable CORS with credentials
 app.use(
