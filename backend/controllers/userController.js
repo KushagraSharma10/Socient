@@ -490,24 +490,85 @@ const notifyUser = async (req, res) => {
 // };
 
 
+// const getUserNotifications = async (req, res) => {
+//   try {
+//     // Debug log
+//     console.log("Received user ID in getUserNotifications:", req.userId);
+
+//     // Validate user ID format
+//     if (!mongoose.isValidObjectId(req.userId)) {
+//       return res.status(400).json({ message: "Invalid user ID" });
+//     }
+
+//     const user = await User.findById(req.userId).populate({
+//       path: "notifications",
+//       populate: { path: "sender", select: "name username" }, // Optionally populate sender details
+//     });
+
+//     if (!user) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     res.status(200).json({ notifications: user.notifications });
+//   } catch (error) {
+//     console.error("Error fetching notifications:", error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+// const getUserNotifications = async (req, res) => {
+//   try {
+//     console.log("Received user ID in getUserNotifications:", req.userId);
+
+//     // Validate user ID format
+//     if (!mongoose.Types.ObjectId.isValid(req.userId)) {
+//       console.error("Invalid user ID format:", req.userId);
+//       return res.status(400).json({ message: "Invalid user ID" });
+//     }
+
+//     // Fetch user and populate notifications
+//     const user = await User.findById(req.userId).populate({
+//       path: "notifications",
+//       populate: { path: "sender", select: "name username" }, // Optionally populate sender details
+//     });
+
+//     if (!user) {
+//       console.error("User not found for ID:", req.userId);
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     console.log("Fetched notifications:", user.notifications);
+
+//     res.status(200).json({ notifications: user.notifications });
+//   } catch (error) {
+//     console.error("Error fetching notifications:", error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
 const getUserNotifications = async (req, res) => {
   try {
-    // Debug log
-    console.log("Received user ID in getUserNotifications:", req.userId);
+    const userId = req.params.userId;
+    console.log("User ID from params:", userId);
 
     // Validate user ID format
-    if (!mongoose.isValidObjectId(req.userId)) {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      console.error("Invalid user ID format:", userId);
       return res.status(400).json({ message: "Invalid user ID" });
     }
 
-    const user = await User.findById(req.userId).populate({
+    // Fetch user and populate notifications
+    const user = await User.findById(userId).populate({
       path: "notifications",
-      populate: { path: "sender", select: "name username" }, // Optionally populate sender details
+      populate: { path: "sender", select: "name username profilePicture" },
     });
 
     if (!user) {
+      console.error("User not found for ID:", userId);
       return res.status(404).json({ message: "User not found" });
     }
+
+    console.log("Fetched notifications:", user.notifications);
 
     res.status(200).json({ notifications: user.notifications });
   } catch (error) {
@@ -515,6 +576,31 @@ const getUserNotifications = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// Get followers and following of the logged-in user
+const getFollowersAndFollowing =  async (req, res) => {
+  try {
+    const userId = req.params.userId; // Extracted from the token by authenticateUser middleware
+
+    // Fetch the user's followers and following
+    const user = await User.findById(userId)
+      .populate('followers', 'id name username profilePicture')
+      .populate('following', 'id name username profilePicture');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json({
+      followers: user.followers,
+      following: user.following,
+    });
+  } catch (error) {
+    console.error('Error fetching followers and following:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+}
+
 
 module.exports = {
   LoginUser,
@@ -526,4 +612,5 @@ module.exports = {
   unfollowUser,
   notifyUser,
   getUserNotifications,
+  getFollowersAndFollowing,
 };

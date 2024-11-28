@@ -103,7 +103,6 @@
 // };
 
 // export default Notification;
-
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
@@ -127,6 +126,7 @@ const decodeJWT = (token) => {
 const Notification = () => {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         const fetchNotifications = async () => {
@@ -134,26 +134,25 @@ const Notification = () => {
                 const token = localStorage.getItem("token");
                 if (!token) {
                     console.error("No token found in localStorage");
-                    return;
+                    throw new Error("User is not authenticated.");
                 }
 
                 const decodedToken = decodeJWT(token);
-                if (!decodedToken) {
-                    throw new Error("Failed to decode token");
+                if (!decodedToken || !decodedToken.id) {
+                    throw new Error("Invalid or malformed token.");
                 }
 
-                console.log("Decoded Token:", decodedToken); // Debugging line
                 const userId = decodedToken.id;
 
-                // Make the API call
-                const response = await axios.get('http://localhost:3000/api/users/notifications', {
+                // Fetch notifications from the API
+                const response = await axios.get(`http://localhost:3000/api/users/notifications/${userId}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
 
-                console.log("Fetched Notifications:", response.data); // Debugging line
-                setNotifications(response.data);
-            } catch (error) {
-                console.error("Error fetching notifications:", error.response?.data || error.message);
+                setNotifications(response.data.notifications);
+            } catch (err) {
+                console.error("Error fetching notifications:", err.response?.data || err.message);
+                setError(err.response?.data?.message || "An error occurred.");
             } finally {
                 setLoading(false);
             }
@@ -161,31 +160,47 @@ const Notification = () => {
 
         fetchNotifications();
     }, []);
+
     return (
         <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4">
             <div className="w-full max-w-3xl bg-white shadow-md rounded-lg p-6">
-                <h2 className="text-2xl font-semibold mb-6 text-gray-800">Notifications</h2>
-                
+                <h2 className="text-3xl font-bold mb-6 text-gray-800 border-b pb-2">
+                    Notifications
+                </h2>
+
                 {loading ? (
-                    <p>Loading...</p>
+                    <div className="flex justify-center items-center py-10">
+                        <div className="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-16 w-16"></div>
+                    </div>
+                ) : error ? (
+                    <p className="text-red-500 text-center">{error}</p>
                 ) : (
-                    <ul>
+                    <ul className="space-y-4">
                         {notifications.length === 0 ? (
-                            <p className="text-gray-500">No new notifications</p>
+                            <p className="text-gray-500 text-center">No new notifications</p>
                         ) : (
                             notifications.map((notification) => (
-                                <li key={notification._id} className="flex items-center justify-between border-b border-gray-200 p-3 hover:bg-gray-100">
+                                <li
+                                    key={notification._id}
+                                    className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-md shadow-sm p-4 hover:shadow-md transition-shadow duration-300"
+                                >
                                     <div className="flex items-center">
                                         <img
                                             src={notification.sender.profilePicture || 'https://via.placeholder.com/50'}
                                             alt={notification.sender.username}
-                                            className="w-12 h-12 rounded-full object-cover mr-3"
+                                            className="w-12 h-12 rounded-full object-cover mr-4"
                                         />
-                                        <p className="text-gray-700">
-                                            <span className="font-semibold">{notification.sender.username}</span> started following you
-                                        </p>
+                                        <div>
+                                            <p className="text-gray-700">
+                                                <span className="font-semibold text-blue-600">{notification.sender.username}</span>{' '}
+                                                {notification.type === 'follow' ? 'started following you' : notification.message}
+                                            </p>
+                                            <span className="text-sm text-gray-500">
+                                                {new Date(notification.createdAt).toLocaleDateString()} at{' '}
+                                                {new Date(notification.createdAt).toLocaleTimeString()}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <span className="text-sm text-gray-500">{new Date(notification.createdAt).toLocaleDateString()}</span>
                                 </li>
                             ))
                         )}

@@ -1,56 +1,18 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
+const userSchema = new mongoose.Schema(
+  {
+    username: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    profilePicture: { type: String },
+    followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // References to other users
+    following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // References to other users
+    chatRooms: [{ type: String }], // Optional: Array of room IDs the user is part of
   },
-  bio: {
-    type: String,
-  },
-  username: {
-    type: String,
-    required: true,
-    unique: true, // Ensure that usernames are unique
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true, // Ensure that emails are unique
-  },
-  password: {
-    type: String,
-    required: true,
-  },
-  profilePicture: {
-    type: String,
-  },
-  followers: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User', // Reference to other users who are following this user
-    },
-  ],
-  following: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User', // Reference to other users that this user is following
-    },
-  ],
-  posts: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Post', // Reference to posts created by the user
-    },
-  ],
-  notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Notification' }],
+  { timestamps: true }
+);
 
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-// Create a model from the schema
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
 
 module.exports = User;
