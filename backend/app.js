@@ -2,7 +2,8 @@ const express = require("express");
 const connectDB = require("./config/mongoose-connection");
 const commentRoutes = require("./routes/commentRoutes");
 const postRoutes = require("./routes/postRoutes");
-const userRoutes = require("./routes/userRoutes");  
+const userRoutes = require("./routes/userRoutes");    
+const messengerRoutes = require("./routes/messengerRoutes");  
 const app = express();
 const http = require("http");
 const cors = require("cors");
@@ -18,9 +19,12 @@ require('dotenv').config();
 // Connect to the database
 connectDB();
 
-
 // Initialize Socket.IO
 initializeSocket(server);
+
+
+
+
 
 // Enable CORS with credentials
 app.use(
@@ -51,6 +55,7 @@ app.use(
 // Set up your routes
 app.use("/api/posts", postRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/messenger", messengerRoutes);
 app.use("/api/posts", commentRoutes); // Moved comment routes to a separate line for clarity
 
 // Start the server
