@@ -422,25 +422,6 @@ const unfollowUser = async (req, res) => {
   }
 };
 
-// const notifyUser = async (req, res) => {
-//   try {
-//       if (!req.userId) {
-//           return res.status(401).json({ message: 'Unauthorized: Missing user ID' });
-//       }
-
-//       console.log("Fetching notifications for user ID:", req.userId);
-
-//       const notifications = await Notification.find({ user: req.userId })
-//           .populate('sender', 'username profilePicture')
-//           .sort({ createdAt: -1 });
-
-//       res.status(200).json(notifications);
-//   } catch (error) {
-//       console.error("Error fetching notifications:", error);
-//       res.status(500).json({ error: error.message });
-//   }
-// };
-
 const notifyUser = async (req, res) => {
   try {
     // Find the user who will receive the notification
@@ -470,81 +451,6 @@ const notifyUser = async (req, res) => {
   }
 };
 
-// const getUserNotifications = async (req, res) => {
-//   try {
-//     console.log('User ID:', req.userId);
-//     const user = await User.findById(req.userId).populate({
-//       path: 'notifications',
-//       populate: { path: 'sender', select: 'name username' }, // Optionally populate sender details
-//     });
-
-//     if (!user) {
-//       return res.status(404).json({ message: 'User not found' });
-//     }
-
-//     res.status(200).json({ notifications: user.notifications });
-//   } catch (error) {
-//     console.error('Error fetching notifications:', error);
-//     res.status(500).json({ message: 'Server error' });
-//   }
-// };
-
-
-// const getUserNotifications = async (req, res) => {
-//   try {
-//     // Debug log
-//     console.log("Received user ID in getUserNotifications:", req.userId);
-
-//     // Validate user ID format
-//     if (!mongoose.isValidObjectId(req.userId)) {
-//       return res.status(400).json({ message: "Invalid user ID" });
-//     }
-
-//     const user = await User.findById(req.userId).populate({
-//       path: "notifications",
-//       populate: { path: "sender", select: "name username" }, // Optionally populate sender details
-//     });
-
-//     if (!user) {
-//       return res.status(404).json({ message: "User not found" });
-//     }
-
-//     res.status(200).json({ notifications: user.notifications });
-//   } catch (error) {
-//     console.error("Error fetching notifications:", error);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
-
-// const getUserNotifications = async (req, res) => {
-//   try {
-//     console.log("Received user ID in getUserNotifications:", req.userId);
-
-//     // Validate user ID format
-//     if (!mongoose.Types.ObjectId.isValid(req.userId)) {
-//       console.error("Invalid user ID format:", req.userId);
-//       return res.status(400).json({ message: "Invalid user ID" });
-//     }
-
-//     // Fetch user and populate notifications
-//     const user = await User.findById(req.userId).populate({
-//       path: "notifications",
-//       populate: { path: "sender", select: "name username" }, // Optionally populate sender details
-//     });
-
-//     if (!user) {
-//       console.error("User not found for ID:", req.userId);
-//       return res.status(404).json({ message: "User not found" });
-//     }
-
-//     console.log("Fetched notifications:", user.notifications);
-
-//     res.status(200).json({ notifications: user.notifications });
-//   } catch (error) {
-//     console.error("Error fetching notifications:", error);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
 
 const getUserNotifications = async (req, res) => {
   try {
@@ -578,11 +484,15 @@ const getUserNotifications = async (req, res) => {
 };
 
 // Get followers and following of the logged-in user
-const getFollowersAndFollowing =  async (req, res) => {
-  try {
-    const userId = req.params.userId; // Extracted from the token by authenticateUser middleware
 
-    // Fetch the user's followers and following
+const getFollowersAndFollowing = async (req, res) => {
+  try {
+    const userId = req.params.userId || req.user._id; // Extract userId from params or middleware
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid User ID' });
+    }
+
     const user = await User.findById(userId)
       .populate('followers', 'id name username profilePicture')
       .populate('following', 'id name username profilePicture');
@@ -591,15 +501,116 @@ const getFollowersAndFollowing =  async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.status(200).json({
-      followers: user.followers,
-      following: user.following,
-    });
+    // Merge followers and following, then remove duplicates
+    const mergedList = [...user.followers, ...user.following];
+    const uniqueList = Array.from(
+      new Map(mergedList.map((item) => [item.id, item])).values()
+    );
+
+    res.status(200).json(uniqueList);
   } catch (error) {
     console.error('Error fetching followers and following:', error);
     res.status(500).json({ message: 'Server error' });
   }
-}
+};
+
+const sendFollowRequest = async (req, res) => {
+  try {
+    const { userId } = req.params; // Target user to send a follow request
+    const currentUserId = req.userId;
+
+    if (userId === currentUserId) {
+      return res.status(400).json({ message: "You can't send a follow request to yourself" });
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if request already exists
+    const existingRequest = targetUser.followRequests.find(
+      (req) => req.from.toString() === currentUserId
+    );
+    if (existingRequest) {
+      return res.status(400).json({ message: "Follow request already sent" });
+    }
+
+    // Add follow request
+    targetUser.followRequests.push({ from: currentUserId });
+    await targetUser.save();
+
+    res.status(200).json({ message: "Follow request sent successfully" });
+  } catch (error) {
+    console.error("Error sending follow request:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+const acceptFollowRequest = async (req, res) => {
+  try {
+    const { userId } = req.params; // Requester ID
+    const currentUserId = req.userId;
+
+    const currentUser = await User.findById(currentUserId);
+    const requester = await User.findById(userId);
+
+    if (!currentUser || !requester) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const requestIndex = currentUser.followRequests.findIndex(
+      (req) => req.from.toString() === userId
+    );
+
+    if (requestIndex === -1) {
+      return res.status(400).json({ message: "Follow request not found" });
+    }
+
+    // Accept the request
+    currentUser.followRequests[requestIndex].status = 'accepted';
+    currentUser.followers.push(userId);
+    requester.following.push(currentUserId);
+
+    await currentUser.save();
+    await requester.save();
+
+    res.status(200).json({ message: "Follow request accepted successfully" });
+  } catch (error) {
+    console.error("Error accepting follow request:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+const rejectFollowRequest = async (req, res) => {
+  try {
+    const { userId } = req.params; // Requester ID
+    const currentUserId = req.userId;
+
+    const currentUser = await User.findById(currentUserId);
+
+    if (!currentUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const requestIndex = currentUser.followRequests.findIndex(
+      (req) => req.from.toString() === userId
+    );
+
+    if (requestIndex === -1) {
+      return res.status(400).json({ message: "Follow request not found" });
+    }
+
+    // Reject the request
+    currentUser.followRequests.splice(requestIndex, 1);
+    await currentUser.save();
+
+    res.status(200).json({ message: "Follow request rejected successfully" });
+  } catch (error) {
+    console.error("Error rejecting follow request:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 
 module.exports = {
@@ -613,4 +624,7 @@ module.exports = {
   notifyUser,
   getUserNotifications,
   getFollowersAndFollowing,
+  sendFollowRequest,
+  acceptFollowRequest,
+  rejectFollowRequest,
 };

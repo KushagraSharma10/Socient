@@ -36,6 +36,13 @@ const userSchema = new mongoose.Schema({
       ref: 'User', // Reference to other users that this user is following
     },
   ],
+  followRequests: [
+    {
+      from: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      status: { type: String, enum: ['pending', 'accepted', 'rejected'], default: 'pending' },
+    },
+  ],
+
   posts: [
     {
       type: mongoose.Schema.Types.ObjectId,

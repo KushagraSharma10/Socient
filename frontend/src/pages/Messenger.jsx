@@ -1,283 +1,220 @@
-// import React, { useState, useEffect, useRef } from 'react';
-// import { io } from 'socket.io-client';
-// import axios from 'axios';
-
-// const Messenger = ({ isDarkMode }) => {
-//   const [selectedUser, setSelectedUser] = useState(null);
-//   const [users, setUsers] = useState([]);
-//   const [messages, setMessages] = useState([]);
-//   const [newMessage, setNewMessage] = useState('');
-//   const socketRef = useRef(null);
-
-//   // Initialize Socket.IO
-//   useEffect(() => {
-//     socketRef.current = io('http://localhost:3000');
-
-//     // Cleanup on component unmount
-//     return () => {
-//       socketRef.current.disconnect();
-//     };
-//   }, []);
-
-//   // Fetch users (followers and following)
-//   useEffect(() => {
-//     const fetchUsers = async () => {
-//       try {
-//         const token = localStorage.getItem('token');
-//         if (!token) {
-//           throw new Error('User is not authenticated.');
-//         }
-
-//         const response = await axios.get(`http://localhost:3000/api/users/followers-following/${userId}`, {
-//           headers: { Authorization: `Bearer ${token}` },
-//         });
-
-//         setUsers(response.data.users); // Assuming the backend sends users in response.data.users
-//       } catch (error) {
-//         console.error('Error fetching users:', error.response?.data || error.message);
-//       }
-//     };
-
-//     fetchUsers();
-//   }, []);
-
-//   // Handle user selection
-//   const handleUserSelect = (user) => {
-//     setSelectedUser(user);
-
-//     // Fetch messages for the selected user
-//     const fetchMessages = async () => {
-//       try {
-//         const response = await axios.get(`http://localhost:3000/api/messenger/messages/${user.id}`);
-//         setMessages(response.data); // Assuming the backend sends messages in response.data
-//       } catch (error) {
-//         console.error('Error fetching messages:', error.response?.data || error.message);
-//       }
-//     };
-
-//     fetchMessages();
-//   };
-
-//   // Send a message
-//   const handleSendMessage = () => {
-//     if (newMessage.trim() && selectedUser) {
-//       const messageData = {
-//         roomId: selectedUser.id,
-//         sender: 'You',
-//         content: newMessage,
-//       };
-
-//       // Emit the message to the server
-//       socketRef.current.emit('send-message', messageData);
-
-//       // Update the local messages list
-//       setMessages((prevMessages) => [...prevMessages, { ...messageData }]);
-//       setNewMessage('');
-//     }
-//   };
-
-//   // Receive messages
-//   useEffect(() => {
-//     if (socketRef.current) {
-//       socketRef.current.on('receive-message', (message) => {
-//         if (message.roomId === selectedUser?.id) {
-//           setMessages((prevMessages) => [...prevMessages, message]);
-//         }
-//       });
-//     }
-//   }, [selectedUser]);
-
-//   return (
-//     <div className={`flex h-[calc(100vh-4rem)] ${isDarkMode ? 'dark' : ''}`}>
-//       {/* User List */}
-//       <div className="w-2/5 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto">
-//         <h2 className="text-xl font-semibold p-4 border-b border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200">
-//           Messages
-//         </h2>
-//         <div>
-//           {users.map((user) => (
-//             <div
-//               key={user.id}
-//               className={`flex items-center p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${
-//                 selectedUser?.id === user.id ? 'bg-gray-200 dark:bg-gray-700' : ''
-//               }`}
-//               onClick={() => handleUserSelect(user)}
-//             >
-//               <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-xl font-bold text-gray-800 dark:text-gray-200">
-//                 {user.name[0]}
-//               </div>
-//               <div className="ml-4">
-//                 <p className="text-md font-medium text-gray-800 dark:text-gray-200">{user.name}</p>
-//                 <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{user.lastMessage || 'Start chatting!'}</p>
-//               </div>
-//             </div>
-//           ))}
-//         </div>
-//       </div>
-
-//       {/* Chat Window */}
-//       <div className="w-3/5 flex flex-col bg-gray-50 dark:bg-gray-900">
-//         {selectedUser ? (
-//           <>
-//             {/* Chat Header */}
-//             <div className="flex items-center p-4 border-b border-gray-200 dark:border-gray-700">
-//               <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-xl font-bold text-gray-800 dark:text-gray-200">
-//                 {selectedUser.name[0]}
-//               </div>
-//               <h2 className="ml-4 text-lg font-semibold text-gray-800 dark:text-gray-200">
-//                 {selectedUser.name}
-//               </h2>
-//             </div>
-
-//             {/* Messages */}
-//             <div className="flex-1 overflow-y-auto p-4 space-y-3">
-//               {messages.map((msg, index) => (
-//                 <div
-//                   key={index}
-//                   className={`flex ${msg.sender === 'You' ? 'justify-end' : 'justify-start'}`}
-//                 >
-//                   <div
-//                     className={`p-3 rounded-lg max-w-xs ${
-//                       msg.sender === 'You'
-//                         ? 'bg-blue-500 text-white'
-//                         : 'bg-gray-200 dark:bg-gray-700 text-black dark:text-gray-200'
-//                     }`}
-//                   >
-//                     {msg.content}
-//                   </div>
-//                 </div>
-//               ))}
-//             </div>
-
-//             {/* Message Input */}
-//             <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-//               <div className="flex">
-//                 <input
-//                   type="text"
-//                   placeholder="Type a message..."
-//                   value={newMessage}
-//                   onChange={(e) => setNewMessage(e.target.value)}
-//                   className="flex-grow p-2 border border-gray-300 dark:border-gray-600 rounded-l-lg focus:outline-none focus:ring focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
-//                 />
-//                 <button
-//                   onClick={handleSendMessage}
-//                   className="bg-blue-600 text-white px-4 py-2 rounded-r-lg hover:bg-blue-700 transition"
-//                 >
-//                   Send
-//                 </button>
-//               </div>
-//             </div>
-//           </>
-//         ) : (
-//           <div className="flex items-center justify-center flex-1 text-gray-500 dark:text-gray-400">
-//             <p>Select a user to start chatting</p>
-//           </div>
-//         )}
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default Messenger;
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import socket from '../utils/Socket'; // Import the socket instance
 import axios from 'axios';
-import io from 'socket.io-client';
 
-const socket = io('http://localhost:3000'); // Replace with your backend URL
+const Messenger = ({ isDarkMode }) => {
+  const [selectedChatId, setSelectedChatId] = useState(null); // Selected chat ID
+  const [selectedUser, setSelectedUser] = useState(null); // Selected user for chat
+  const [users, setUsers] = useState([]); // Chat list
+  const [searchResults, setSearchResults] = useState([]); // Search results
+  const [messages, setMessages] = useState([]); // Messages in the chat window
+  const [newMessage, setNewMessage] = useState(''); // New message input
+  const [searchQuery, setSearchQuery] = useState(''); // Search bar query
+  const [followersFollowing, setFollowersFollowing] = useState([]); // Followers and following
+  const [isPopupOpen, setIsPopupOpen] = useState(false); // Popup for starting chat
 
-const Messenger = () => {
-  const [users, setUsers] = useState([]);
-  const [currentChat, setCurrentChat] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
-
+  // Fetch initial data
   useEffect(() => {
-    // Fetch user chats
-    const fetchChats = async () => {
+    const fetchInitialData = async () => {
       try {
-        const response = await axios.get('http://localhost:3000/api/messenger/chats');
-        setUsers(response.data);
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('User is not authenticated.');
+        }
+        const userId = localStorage.getItem('userId');
+
+        // Fetch existing chats
+        const chatResponse = await axios.get('http://localhost:3000/api/messenger/chats', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUsers(chatResponse.data);
+
+        // Fetch followers and following
+        const response = await axios.get(`http://localhost:3000/api/users/followers-following/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setFollowersFollowing(response.data);
       } catch (error) {
-        console.error('Error fetching chats:', error);
+        console.error('Error fetching initial data:', error.response?.data || error.message);
       }
     };
 
-    fetchChats();
+    fetchInitialData();
   }, []);
 
-  const openChat = async (chatId) => {
-    setCurrentChat(chatId);
-    try {
-      const response = await axios.get(`http://localhost:3000/api/messenger/chats/${chatId}`);
-      setMessages(response.data.messages);
-      socket.emit('joinChat', chatId);
-    } catch (error) {
-      console.error('Error fetching chat messages:', error);
-    }
-  };
-
-  const sendMessage = async () => {
-    if (newMessage.trim() && currentChat) {
-      try {
-        const newMsg = { content: newMessage };
-        await axios.post(`/api/messenger/chats/${currentChat}/messages`, newMsg);
-        setMessages([...messages, { sender: 'You', content: newMessage }]);
-        setNewMessage('');
-        socket.emit('sendMessage', { chatId: currentChat, message: newMsg });
-      } catch (error) {
-        console.error('Error sending message:', error);
-      }
-    }
-  };
-
+  // Initialize Socket.IO
   useEffect(() => {
-    socket.on('newMessage', (message) => {
-      setMessages((prevMessages) => [...prevMessages, message]);
+    socket.connect();
+
+    // Listen for incoming messages
+    socket.on('receiveMessage', (message) => {
+      if (message.chatId === selectedChatId) {
+        // Add message to the current chat window
+        setMessages((prevMessages) => [...prevMessages, message]);
+      } else {
+        // Update chat list with the latest message
+        setUsers((prevUsers) => {
+          const updatedUsers = prevUsers.map((user) =>
+            user.chatId === message.chatId
+              ? { ...user, lastMessage: message.content, isBold: true }
+              : user
+          );
+          return updatedUsers;
+        });
+      }
     });
-  }, []);
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [selectedChatId]);
+
+  // Join a chat room when a user is selected
+  useEffect(() => {
+    if (selectedChatId) {
+      socket.emit('joinChat', selectedChatId);
+    }
+  }, [selectedChatId]);
+
+  // Handle user selection for chat
+  const handleUserSelect = (user) => {
+    setSelectedUser(user);
+    setSelectedChatId(user.chatId);
+
+    const fetchMessages = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`http://localhost:3000/api/messenger/chats/${user.chatId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setMessages(response.data.messages);
+      } catch (error) {
+        console.error('Error fetching messages:', error.response?.data || error.message);
+      }
+    };
+
+    fetchMessages();
+  };
+
+  // Send a message
+  const handleSendMessage = () => {
+    if (newMessage.trim() && selectedChatId) {
+      const messageData = {
+        sender: 'You',
+        content: newMessage,
+        createdAt: new Date(),
+      };
+
+      // Emit the message to the server
+      socket.emit('sendMessage', { chatId: selectedChatId, message: messageData });
+
+      // Add the message to the chat window
+      setMessages((prevMessages) => [...prevMessages, messageData]);
+      setNewMessage('');
+    }
+  };
+
+  // Open the "Start Chatting" popup
+  const openNewChatPopup = () => {
+    setIsPopupOpen(true);
+  };
+
+  // Close the popup
+  const closePopup = () => {
+    setIsPopupOpen(false);
+  };
+
+  // Search bar logic
+  const handleSearch = (e) => {
+    setSearchQuery(e.target.value);
+
+    if (e.target.value.trim() === '') {
+      setSearchResults([]);
+    } else {
+      const filteredResults = followersFollowing.filter((user) =>
+        user.name.toLowerCase().includes(e.target.value.toLowerCase())
+      );
+      setSearchResults(filteredResults);
+    }
+  };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Left Panel: User List */}
-      <div className="w-1/4 bg-white shadow-md p-4 overflow-y-auto">
-        <h2 className="text-lg font-semibold mb-4 text-gray-700">Chats</h2>
-        {users.map((user) => (
-          <div
-            key={user._id}
-            className="flex items-center p-3 mb-3 bg-gray-100 rounded-lg hover:bg-gray-200 cursor-pointer transition duration-150"
-            onClick={() => openChat(user._id)}
-          >
-            <img
-              src={user.profilePicture || 'https://via.placeholder.com/40'}
-              alt="Profile"
-              className="w-10 h-10 rounded-full mr-3"
-            />
-            <div>
-              <h3 className="text-sm font-medium text-gray-800">{user.username}</h3>
+    <div className={`flex h-[calc(100vh-4rem)] ${isDarkMode ? 'dark' : ''}`}>
+      {/* User List */}
+      <div className="w-2/5 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto">
+        <h2 className="text-xl font-semibold p-4 border-b border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200">
+          Messages
+        </h2>
+        <div className="p-4">
+          <input
+            type="text"
+            placeholder="Search users..."
+            value={searchQuery}
+            onChange={handleSearch}
+            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring focus:border-blue-500 dark:focus:border-blue-400"
+          />
+        </div>
+        <div>
+          {users.map((user) => (
+            <div
+              key={user.chatId}
+              className="flex items-center p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={() => handleUserSelect(user)}
+            >
+              <img
+                src={user.profilePicture || 'https://via.placeholder.com/50'}
+                alt={`${user.name}'s profile`}
+                className="w-10 h-10 rounded-full"
+              />
+              <div className="ml-4">
+                <p className="text-md font-medium text-gray-800 dark:text-gray-200">{user.name}</p>
+                <p
+                  className={`text-sm ${
+                    user.isBold ? 'font-bold text-gray-900' : 'text-gray-600 dark:text-gray-400'
+                  } truncate`}
+                >
+                  {user.lastMessage || 'Start chatting!'}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+          {!users.length && (
+            <div className="flex items-center justify-center p-4">
+              <button
+                onClick={openNewChatPopup}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
+              >
+                <span className="text-lg mr-2">+</span> Start Chatting
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Right Panel: Chat Window */}
-      <div className="flex flex-col flex-grow bg-white shadow-md">
-        {currentChat ? (
+      {/* Chat Window */}
+      <div className="w-3/5 flex flex-col bg-gray-50 dark:bg-gray-900">
+        {selectedUser ? (
           <>
-            <div className="flex items-center justify-between p-4 border-b bg-gray-50">
-              <h2 className="text-lg font-semibold text-gray-700">Chat</h2>
+            <div className="flex items-center p-4 border-b border-gray-200 dark:border-gray-700">
+              <img
+                src={selectedUser.profilePicture || 'https://via.placeholder.com/50'}
+                alt={`${selectedUser.name}'s profile`}
+                className="w-10 h-10 rounded-full"
+              />
+              <h2 className="ml-4 text-lg font-semibold text-gray-800 dark:text-gray-200">{selectedUser.name}</h2>
             </div>
-            <div className="flex-grow p-4 overflow-y-auto bg-gray-100">
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {messages.map((msg, index) => (
                 <div
                   key={index}
-                  className={`mb-4 flex ${
-                    msg.sender === 'You' ? 'justify-end' : 'justify-start'
-                  }`}
+                  className={`flex ${msg.sender === 'You' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`p-3 rounded-lg ${
-                      msg.sender === 'You' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'
+                    className={`p-3 rounded-lg max-w-xs ${
+                      msg.sender === 'You'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-black dark:text-gray-200'
                     }`}
                   >
                     {msg.content}
@@ -285,31 +222,68 @@ const Messenger = () => {
                 </div>
               ))}
             </div>
-            <div className="p-4 border-t bg-gray-50 flex">
-              <input
-                type="text"
-                placeholder="Type a message..."
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                className="flex-grow p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 mr-3"
-              />
-              <button
-                onClick={sendMessage}
-                className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition duration-150"
-              >
-                Send
-              </button>
+
+            <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+              <div className="flex">
+                <input
+                  type="text"
+                  placeholder="Type a message..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  className="flex-grow p-2 border border-gray-300 dark:border-gray-600 rounded-l-lg focus:outline-none focus:ring focus:border-blue-500 dark:focus:border-blue-400"
+                />
+                <button
+                  onClick={handleSendMessage}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-r-lg hover:bg-blue-700 transition"
+                >
+                  Send
+                </button>
+              </div>
             </div>
           </>
         ) : (
-          <div className="flex items-center justify-center flex-grow text-gray-500">
-            <h2>Select a chat to start messaging</h2>
+          <div className="flex items-center justify-center flex-1 text-gray-500 dark:text-gray-400">
+            <p>Select a user to start chatting</p>
           </div>
         )}
       </div>
+
+      {/* New Chat Popup */}
+      {isPopupOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-1/3">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Start a New Chat</h2>
+            <div className="space-y-3">
+              {followersFollowing.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                  onClick={() => {
+                    setSelectedUser(user);
+                    setSelectedChatId(user.chatId || user.id); // Use user.id if chatId doesn't exist yet
+                    closePopup();
+                  }}
+                >
+                  <img
+                    src={user.profilePicture || 'https://via.placeholder.com/50'}
+                    alt={`${user.name}'s profile`}
+                    className="w-10 h-10 rounded-full"
+                  />
+                  <p className="ml-4 text-md font-medium text-gray-800 dark:text-gray-200">{user.name}</p>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={closePopup}
+              className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default Messenger;
-

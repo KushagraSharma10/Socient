@@ -1,5 +1,5 @@
 const express = require('express');
-const { RegisterUser, LoginUser, getUsers, SpecificUser, logoutUser, followUser, unfollowUser, notifyUser, getUserNotifications, getFollowersAndFollowing } = require('../controllers/userController');
+const { RegisterUser, LoginUser, getUsers, SpecificUser, logoutUser, followUser, unfollowUser, notifyUser, getUserNotifications, getFollowersAndFollowing, sendFollowRequest, acceptFollowRequest, rejectFollowRequest } = require('../controllers/userController');
 const authenticateToken = require('../middlewares/authenticateToken');
 const upload = require('../config/multer-config');
 const authenticateUser = require('../middlewares/authenticateUser');
@@ -25,5 +25,12 @@ router.post("/notifications", authenticateUser, notifyUser)
 router.put('/:userId/follow', authenticateUser, followUser);
 
 router.put('/:userId/unfollow', authenticateUser, unfollowUser);
+
+router.post('/:userId/request-follow', authenticateUser, sendFollowRequest);
+
+router.put('/:userId/accept-follow', authenticateUser, acceptFollowRequest);
+
+router.put('/:userId/reject-follow', authenticateUser, rejectFollowRequest);
+
 
 module.exports = router;

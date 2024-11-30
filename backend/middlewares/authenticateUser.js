@@ -46,26 +46,3 @@ const authenticateUser = (req, res, next) => {
 };
 
 module.exports = authenticateUser;
-
-
-
-// const authenticateUser = (req, res, next) => {
-//   const token = req.headers.authorization?.split(' ')[1];
-//   if (!token) {
-//     return res.status(401).json({ message: 'Authentication token missing' });
-//   }
-
-//   try {
-//     const decoded = jwt.verify(token, process.env.JWT_KEY);
-//     console.log("Decoded Token:", decoded); // Add this log
-//     req.userId = decoded.id;
-//     console.log("Authenticated user ID:", req.userId); // Add this log
-//     next();
-//   } catch (error) {
-//     console.error("Token verification failed:", error);
-//     res.status(403).json({ message: 'Invalid or expired token' });
-//   }
-// };
-
-module.exports = authenticateUser;
-
