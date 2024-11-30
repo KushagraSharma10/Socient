@@ -302,6 +302,41 @@ function HomePage() {
             console.error("Error unfollowing user:", error);
         }
     }, [setUser]);
+
+    const handleSendFollowRequest = async (userId) => {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await axios.post(
+            `http://localhost:3000/api/users/${userId}/request-follow`,
+            {},
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+      
+          if (response.status === 200) {
+            console.log('Follow request sent');
+          }
+        } catch (error) {
+          console.error('Error sending follow request:', error);
+        }
+      };
+      
+    const handleAcceptFollowRequest = async (userId) => {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await axios.put(
+            `http://localhost:3000/api/users/${userId}/accept-follow`,
+            {},
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+      
+          if (response.status === 200) {
+            console.log('Follow request accepted');
+          }
+        } catch (error) {
+          console.error('Error accepting follow request:', error);
+        }
+      };
+      
     
     return (
         <div
@@ -345,6 +380,8 @@ function HomePage() {
                 isDarkMode={isDarkMode}
                 onFollow={handleFollow} // Pass follow handler
                 onUnfollow={handleUnfollow} // Pass unfollow handler
+                handleSendFollowRequest = {handleSendFollowRequest}
+                handleAcceptFollowRequest = {handleAcceptFollowRequest}
             />
             {isModalOpen && (
                 <Post
