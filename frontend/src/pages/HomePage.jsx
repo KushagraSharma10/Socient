@@ -305,20 +305,29 @@ function HomePage() {
 
     const handleSendFollowRequest = async (userId) => {
         try {
+          console.log("Sending follow request to:", userId); // Debug log to verify userId
           const token = localStorage.getItem('token');
+          if (!token) throw new Error('Token not found');
+      
           const response = await axios.post(
-            `http://localhost:3000/api/users/${userId}/request-follow`,
-            {},
-            { headers: { Authorization: `Bearer ${token}` } }
+            `http://localhost:3000/api/users/${userId}/request-follow`, // Check this URL
+            {}, // Empty body, if no additional data is required
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
           );
       
           if (response.status === 200) {
-            console.log('Follow request sent');
+            console.log('Follow request sent successfully:', response.data);
           }
         } catch (error) {
-          console.error('Error sending follow request:', error);
+          console.error('Error sending follow request:', error.response || error.message);
         }
       };
+      
+    
       
     const handleAcceptFollowRequest = async (userId) => {
         try {
