@@ -19,9 +19,18 @@ const initializeSocket = (server) => {
         });
     
         // Handle sending a message
-        socket.on('sendMessage', ({ chatId, message }) => {
-          io.to(chatId).emit('newMessage', message); // Broadcast to all users in the chat room
+        socket.on('sendMessage', async ({ chatId, message }) => {
+          console.log('Received message:', { chatId, message });
+        
+          if (!chatId) {
+            // Initialize a new chat (if applicable)
+            chatId = await createNewChatForUsers(message.sender, message.receiver);
+            console.log('New Chat ID created:', chatId);
+          }
+        
+          io.to(chatId).emit('receiveMessage', { ...message, chatId });
         });
+        
     
         socket.on('disconnect', () => {
           console.log('Client disconnected:', socket.id);

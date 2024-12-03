@@ -44,15 +44,23 @@ const Messenger = ({ isDarkMode }) => {
 
   // Initialize Socket.IO
   useEffect(() => {
+    // Connect to the socket server
     socket.connect();
-
-    // Listen for incoming messages
+  
+    // Handle successful connection
+    socket.on('connect', () => {
+      console.log('Socket connected:', socket.id);
+    });
+  
+    // Handle receiving messages
     socket.on('receiveMessage', (message) => {
+      console.log('Message received from server:', message);
+  
+      // Update chat messages if the message belongs to the currently selected chat
       if (message.chatId === selectedChatId) {
-        // Add message to the current chat window
         setMessages((prevMessages) => [...prevMessages, message]);
       } else {
-        // Update chat list with the latest message
+        // Update the chat list to show the latest message
         setUsers((prevUsers) => {
           const updatedUsers = prevUsers.map((user) =>
             user.chatId === message.chatId
@@ -63,11 +71,19 @@ const Messenger = ({ isDarkMode }) => {
         });
       }
     });
-
+  
+    // Handle connection errors
+    socket.on('connect_error', (err) => {
+      console.error('Socket connection error:', err);
+    });
+  
+    // Cleanup when the component unmounts
     return () => {
       socket.disconnect();
     };
   }, [selectedChatId]);
+  
+  
 
   // Join a chat room when a user is selected
   useEffect(() => {
@@ -79,12 +95,12 @@ const Messenger = ({ isDarkMode }) => {
   // Handle user selection for chat
   const handleUserSelect = (user) => {
     setSelectedUser(user);
-    setSelectedChatId(user.chatId);
+    setSelectedChatId(user.chatId || user.id); // Use chatId or userId if new chat
 
     const fetchMessages = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.get(`http://localhost:3000/api/messenger/chats/${user.chatId}`, {
+        const response = await axios.get(`http://localhost:3000/api/messenger/chats/${user.chatId || user.id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setMessages(response.data.messages);
@@ -97,22 +113,44 @@ const Messenger = ({ isDarkMode }) => {
   };
 
   // Send a message
-  const handleSendMessage = () => {
-    if (newMessage.trim() && selectedChatId) {
-      const messageData = {
-        sender: 'You',
-        content: newMessage,
-        createdAt: new Date(),
-      };
-
-      // Emit the message to the server
-      socket.emit('sendMessage', { chatId: selectedChatId, message: messageData });
-
-      // Add the message to the chat window
-      setMessages((prevMessages) => [...prevMessages, messageData]);
-      setNewMessage('');
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) {
+      console.error('Cannot send an empty message');
+      return;
     }
+    if (!selectedChatId) {
+      console.error('Chat ID is missing');
+      return;
+    }
+  
+    const messageData = {
+      sender: 'You',
+      content: newMessage,
+      createdAt: new Date(),
+    };
+  
+    console.log('Sending message:', { chatId: selectedChatId, message: messageData });
+  
+    // Emit the message to the server
+    socket.emit('sendMessage', { chatId: selectedChatId, message: messageData });
+  
+    // Update chat list if it's a new chat
+    if (!users.some((user) => user.chatId === selectedChatId)) {
+      const newUser = followersFollowing.find((u) => u.id === selectedChatId);
+      if (newUser) {
+        setUsers((prevUsers) => [
+          { ...newUser, lastMessage: newMessage, chatId: selectedChatId, isBold: false },
+          ...prevUsers,
+        ]);
+      }
+    }
+  
+    // Add the message to the chat window
+    setMessages((prevMessages) => [...prevMessages, messageData]);
+    setNewMessage('');
   };
+  
+  
 
   // Open the "Start Chatting" popup
   const openNewChatPopup = () => {
