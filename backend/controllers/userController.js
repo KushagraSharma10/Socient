@@ -584,6 +584,19 @@ const acceptFollowRequest = async (req, res) => {
     currentUser.followers.push(userId);
     requester.following.push(currentUserId);
 
+    // Update the corresponding notification
+    const notification = await Notification.findOne({
+      user: currentUserId,
+      sender: userId,
+      type: "requested",
+    });
+
+    if (notification) {
+      notification.type = "follow";
+      notification.message = `${requester.username} started following you.`;
+      await notification.save();
+    }
+
     await currentUser.save();
     await requester.save();
 
@@ -593,6 +606,8 @@ const acceptFollowRequest = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
 
 const rejectFollowRequest = async (req, res) => {
   try {
