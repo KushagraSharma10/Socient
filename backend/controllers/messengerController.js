@@ -49,29 +49,93 @@ const sendMessage = async (req, res) => {
     const { content } = req.body;
     const userId = req.userId;
 
-    // Find the chat by ID
+    if (!content) {
+      return res.status(400).json({ error: 'Message content cannot be empty.' });
+    }
+
     const chat = await Chat.findById(chatId);
-    if (!chat) return res.status(404).json({ error: "Chat not found" });
+    if (!chat) {
+      return res.status(404).json({ error: 'Chat not found.' });
+    }
 
-    // Create a new message object
-    const newMessage = { sender: userId, content };
+    const newMessage = {
+      sender: userId,
+      content,
+      createdAt: new Date(),
+    };
+
     chat.messages.push(newMessage);
-
-    // Update the chat's last updated time
     chat.updatedAt = new Date();
+
     await chat.save();
 
     // Emit the message to other participants
     if (io) {
-      io.to(chatId).emit("receiveMessage", { ...newMessage, chatId });
+      io.to(chatId).emit('receiveMessage', { ...newMessage, chatId });
     }
 
     res.status(201).json(newMessage);
   } catch (err) {
-    console.error("Error sending message:", err.message);
-    res.status(500).json({ error: "Failed to send message" });
+    console.error('Error sending message:', err.message);
+    res.status(500).json({ error: 'Failed to send message.' });
   }
 };
+
+
+const createChat = async (req, res) => {
+  try {
+    const senderId = req.userId;
+    const { receiverId } = req.body;
+
+    // Validate receiverId
+    if (!receiverId || receiverId === senderId) {
+      return res.status(400).json({ error: 'Invalid receiver ID.' });
+    }
+
+    // Check if a chat already exists
+    const existingChat = await Chat.findOne({
+      participants: { $all: [senderId, receiverId] },
+    });
+
+    if (existingChat) {
+      return res.status(200).json({ chatId: existingChat._id });
+    }
+
+    // Create a new chat
+    const newChat = new Chat({
+      participants: [senderId, receiverId],
+      messages: [],
+    });
+
+    await newChat.save();
+
+    res.status(201).json({ chatId: newChat._id });
+  } catch (err) {
+    console.error('Error creating chat:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+
+const createNewChat = async (senderId, receiverId) => {
+  try {
+    if (!senderId || !receiverId) {
+      throw new Error('Both senderId and receiverId are required to create a chat.');
+    }
+
+    const chat = new Chat({
+      participants: [senderId, receiverId],
+      messages: [],
+    });
+
+    await chat.save();
+    return chat;
+  } catch (err) {
+    console.error('Error creating new chat:', err.message);
+    throw err;
+  }
+};
+
 
 
 
@@ -79,4 +143,6 @@ module.exports = {
   fetchChats,
   specificChats,
   sendMessage,
+  createChat,
+  createNewChat,
 };

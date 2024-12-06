@@ -1,3 +1,5 @@
+const Chat = require('../models/Chat');
+
 let io;
 
 const initializeSocket = (server) => {
@@ -20,16 +22,27 @@ const initializeSocket = (server) => {
     
         // Handle sending a message
         socket.on('sendMessage', async ({ chatId, message }) => {
-          console.log('Received message:', { chatId, message });
+          try {
+            const chat = await Chat.findById(chatId);
+            if (!chat) return;
         
-          if (!chatId) {
-            // Initialize a new chat (if applicable)
-            chatId = await createNewChatForUsers(message.sender, message.receiver);
-            console.log('New Chat ID created:', chatId);
+            const newMessage = {
+              sender: message.sender,
+              content: message.content,
+              createdAt: new Date(),
+            };
+        
+            chat.messages.push(newMessage);
+            chat.updatedAt = new Date();
+            await chat.save();
+        
+            // Broadcast message to other participants
+            socket.to(chatId).emit('receiveMessage', { ...newMessage, chatId });
+          } catch (error) {
+            console.error('Error saving message:', error.message);
           }
-        
-          io.to(chatId).emit('receiveMessage', { ...message, chatId });
         });
+        
         
     
         socket.on('disconnect', () => {

@@ -487,32 +487,27 @@ const getUserNotifications = async (req, res) => {
 
 const getFollowersAndFollowing = async (req, res) => {
   try {
-    const userId = req.params.userId || req.user._id; // Extract userId from params or middleware
-
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: 'Invalid User ID' });
-    }
-
+    const userId = req.params.userId;
     const user = await User.findById(userId)
-      .populate('followers', 'id name username profilePicture')
-      .populate('following', 'id name username profilePicture');
+      .populate('followers', 'id name profilePicture')
+      .populate('following', 'id name profilePicture');
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ error: 'User not found.' });
     }
 
-    // Merge followers and following, then remove duplicates
-    const mergedList = [...user.followers, ...user.following];
-    const uniqueList = Array.from(
-      new Map(mergedList.map((item) => [item.id, item])).values()
-    );
+    const followersFollowing = [
+      ...user.followers.map(follower => ({ id: follower._id, ...follower.toObject() })),
+      ...user.following.map(following => ({ id: following._id, ...following.toObject() })),
+    ];
 
-    res.status(200).json(uniqueList);
+    res.status(200).json(followersFollowing);
   } catch (error) {
-    console.error('Error fetching followers and following:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching followers/following:', error.message);
+    res.status(500).json({ error: 'Server error' });
   }
 };
+
 
 const sendFollowRequest = async (req, res) => {
   try {

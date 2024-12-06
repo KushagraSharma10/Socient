@@ -1,34 +1,23 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const chatSchema = new mongoose.Schema({
-  participants: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User', // Reference to User IDs participating in the chat
-    },
-  ],
-  messages: [
-    {
-      sender: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User', // Reference to the user who sent the message
-      },
-      content: {
-        type: String, // Message content
-        required: true,
-      },
-      timestamp: {
-        type: Date,
-        default: Date.now,
-      },
-    },
-  ],
-  createdAt: {
-    type: Date,
-    default: Date.now,
+const messageSchema = new mongoose.Schema(
+  {
+    sender: { type: mongoose.Schema.Types.ObjectId, ref: "User" , required: true},
+    content: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
   },
-});
+  { _id: false } // Prevent automatic `_id` creation for messages
+);
 
-const Chat = mongoose.model('Chat', chatSchema);
+const chatSchema = new mongoose.Schema(
+  {
+    participants: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // Users in the chat
+    messages: [messageSchema], // Array of messages
+    updatedAt: { type: Date, default: Date.now }, // Last updated time
+  },
+  { timestamps: true } // Automatically add `createdAt` and `updatedAt`
+);
+
+const Chat = mongoose.model("Chat", chatSchema);
 
 module.exports = Chat;
