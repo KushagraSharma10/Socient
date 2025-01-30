@@ -1,11 +1,10 @@
-
 import React, { memo, useState, useRef } from 'react';
 import { FaThumbsUp, FaRegThumbsUp, FaComment, FaArrowLeft, FaArrowRight } from 'react-icons/fa';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/swiper-bundle.css';
 
 const PostItem = memo(({ post, handleLikeToggle, handleCommentToggle, handleCommentChange, handleCommentSubmit, isDarkMode }) => {
-    
+
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const swiperRef = useRef(null); // Ref to control Swiper
 
@@ -82,17 +81,31 @@ const PostItem = memo(({ post, handleLikeToggle, handleCommentToggle, handleComm
                 </div>
                 <div className='flex items-center justify-between px-3'>
                     <div className="flex items-center gap-3 mt-2">
-                        <button
-                            onClick={() => handleLikeToggle(post._id)}
-                            className="flex items-center"
-                        >
+                        <button onClick={() => handleLikeToggle(post._id)} className="flex items-center">
                             {post.hasLiked ? (
-                                <FaThumbsUp className="text-blue-500 mr-1" />
+                                <FaThumbsUp className="text-blue-500 mr-1" /> // Blue if liked
                             ) : (
                                 <FaRegThumbsUp className="mr-1" />
                             )}
-                            <span>{post.likes}</span>
+
+                            {post.likedUsers && post.likedUsers.length > 0 ? (
+                                <>
+                                    {/* Show only the most recent user */}
+                                    <span>{post.likedUsers[post.likedUsers.length - 1]}</span>
+
+                                    {/* Show "and X others" if more than 1 user liked */}
+                                    {post.likedUsers.length > 1 && (
+                                        <span> and {post.likedUsers.length - 1} others</span>
+                                    )}
+                                </>
+                            ) : (
+                                <span>0</span> // Show "0" if no likes
+                            )}
                         </button>
+
+
+
+
                         <button
                             onClick={() => handleCommentToggle(post._id)}
                             className="flex items-center"
@@ -153,6 +166,6 @@ const PostItem = memo(({ post, handleLikeToggle, handleCommentToggle, handleComm
     );
 });
 
-
+PostItem.displayName = 'PostItem';
 
 export default PostItem;

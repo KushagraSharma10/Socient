@@ -1,7 +1,7 @@
-
 const mongoose = require("mongoose");
+const Joi = require("joi");
 
-// Define the post schema
+// Mongoose Schema
 const postSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -11,26 +11,26 @@ const postSchema = new mongoose.Schema({
   content: {
     type: String,
     required: true,
+    trim: true,
+    maxlength: 500, // Limit content length
   },
-  likes: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'  // Store user IDs who liked the post
-}],
+  likes: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
   images: [
     {
       type: String, // URL of the post images
-    }
-  ], // Updated from a single image to an array of image URLs
+    },
+  ],
   comments: [
     {
-      type: mongoose.Schema.Types.ObjectId, // Store only reference IDs of comments for better scalability
+      type: mongoose.Schema.Types.ObjectId,
       ref: "Comment",
     },
   ],
-  hasLiked: {
-    type: Boolean,
-    default: false,
-  },
   overallSentiment: {
     type: String,
     enum: ["positive", "negative", "neutral"],
@@ -42,7 +42,17 @@ const postSchema = new mongoose.Schema({
   },
 });
 
-// Create a model from the schema
+// Joi Validation Schema
+const validatePost = (data) => {
+  const schema = Joi.object({
+    userId: Joi.string().required(),
+    content: Joi.string().trim().max(500).required(),
+    images: Joi.array().items(Joi.string().uri()), // Ensure valid image URLs
+  });
+
+  return schema.validate(data);
+};
+
 const Post = mongoose.model("Post", postSchema);
 
-module.exports = Post;
+module.exports = { Post, validatePost };

@@ -71,20 +71,24 @@ const Notification = () => {
     const handleAcceptRequest = async (notificationId, senderId) => {
         try {
             const token = localStorage.getItem("token");
-            await axios.put(
+            const response = await axios.put(
                 `http://localhost:3000/api/users/${senderId}/accept-follow`,
                 {},
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-
-            // Update the UI to reflect the accepted request
-            setNotifications((prevNotifications) =>
-                prevNotifications.filter((notification) => notification._id !== notificationId)
-            );
+    
+            if (response.status === 200) {
+                // ✅ Remove the accepted request from the UI
+                setNotifications((prevNotifications) =>
+                    prevNotifications.filter((notification) => notification._id !== notificationId)
+                );
+            }
         } catch (error) {
             console.error("Error accepting follow request:", error);
         }
     };
+    
+
 
     const handleRejectRequest = async (notificationId, senderId) => {
         try {
@@ -94,15 +98,15 @@ const Notification = () => {
                 {},
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-
-            // Update the UI to reflect the rejected request
+    
+            // ✅ Remove the rejected request from the UI
             setNotifications((prevNotifications) =>
                 prevNotifications.filter((notification) => notification._id !== notificationId)
             );
         } catch (error) {
             console.error("Error rejecting follow request:", error);
         }
-    };
+    };    
 
     return (
         <div
@@ -151,7 +155,7 @@ const Notification = () => {
                                 >
                                     <div className="flex items-center">
                                         <img
-                                            src={notification.sender.profilePicture || 'https://via.placeholder.com/50'}
+                                            src={notification.sender.profilePicture || 'https://via.placeholder.com/50'}z
                                             alt={notification.sender.username}
                                             className="w-14 h-14 rounded-full object-cover mr-6 shadow-lg"
                                         />

@@ -74,15 +74,21 @@ function HomePage() {
     useEffect(() => {
         const fetchPosts = async () => {
             try {
-                const response = await axios.get("http://localhost:3000/api/posts");
+                const token = localStorage.getItem("token");
+                const response = await axios.get("http://localhost:3000/api/posts", {
+                    headers: { Authorization: `Bearer ${token}` },
+                    withCredentials: true,
+                });
+    
+                // Ensure the frontend correctly stores `hasLiked`
                 setPosts(response.data);
             } catch (error) {
-                console.error("Error fetching posts:", error);
+                console.error("Error fetching posts:", error.response ? error.response.data : error.message);
             }
         };
         fetchPosts();
     }, []);
-
+    
     // GSAP for animation on post items
     useEffect(() => {
         if (postRefs.current.length > 0) {
@@ -135,23 +141,17 @@ function HomePage() {
                         headers: { Authorization: `Bearer ${token}` },
                     }
                 );
-
+    
                 if (response.status === 200) {
-                    const updatedPost = response.data.post;
-                    const newLikeStatus = response.data.hasLiked;
-                    const updatedLikeCount = response.data.likesCount;
-
+                    const { likedUsers, hasLiked } = response.data; // Extract liked users
+    
+                    // Update post state to show liked usernames instead of like count
                     setPosts((prevPosts) =>
-                        prevPosts.map((post) => {
-                            if (post._id === id) {
-                                return {
-                                    ...post,
-                                    likes: updatedLikeCount,
-                                    hasLiked: newLikeStatus,
-                                };
-                            }
-                            return post;
-                        })
+                        prevPosts.map((post) =>
+                            post._id === id
+                                ? { ...post, likedUsers, hasLiked }
+                                : post
+                        )
                     );
                 }
             } catch (error) {
@@ -160,6 +160,8 @@ function HomePage() {
         },
         [posts]
     );
+    
+    
 
     const handleCommentToggle = useCallback(
         (id) => {
@@ -242,16 +244,26 @@ function HomePage() {
 
     const handleLogout = async () => {
         try {
-            await axios.get("http://localhost:3000/api/users/logout", {
+            await axios.post("http://localhost:3000/api/users/logout", {}, {
                 withCredentials: true,
             });
-            localStorage.removeItem("token");
-            setUser(null);
-            navigate("/");
+    
+            // Clear authentication data
+            if (localStorage.getItem("token")) {
+                localStorage.removeItem("token");
+            }
+            sessionStorage.removeItem("token"); // Clear session storage if used
+    
+            setUser(null); // Reset user state
+    
+            navigate("/"); // Redirect to home or login page
+    
+            window.location.reload(); // Optional: Ensure session reset
         } catch (error) {
-            console.error("Error logging out:", error);
+            console.error("Error logging out:", error.response ? error.response.data : error);
         }
     };
+    
 
     // Toggle dark mode
     const toggleDarkMode = () => {
@@ -273,7 +285,7 @@ function HomePage() {
             if (response.status === 200) {
                 setUser((prevUser) => ({
                     ...prevUser,
-                    following: [...prevUser.following, UserId], // Corrected variable name
+                    following: response.data.updatedFollowing, // ✅ Update following list dynamically
                 }));
             }
         } catch (error) {
@@ -339,8 +351,11 @@ function HomePage() {
           );
       
           if (response.status === 200) {
-            console.log('Follow request accepted');
-          }
+            setUser((prevUser) => ({
+                ...prevUser,
+                followers: response.data.updatedFollowers, // ✅ Update followers list dynamically
+            }));
+        }
         } catch (error) {
           console.error('Error accepting follow request:', error);
         }
