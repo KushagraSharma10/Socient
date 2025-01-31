@@ -2,7 +2,7 @@ const { User, validateUser} = require("../models/User");
 const bcrypt = require("bcrypt");
 const { generateToken } = require("../utils/generateToken");
 const imagekit = require("../config/imageKit");
-const { mongoose } = require("mongoose");
+const  mongoose  = require("mongoose");
 const {Notification} = require("../models/Notifications");
 const { emitNotification } = require("../config/socketio");
 
@@ -135,6 +135,7 @@ const getUsers = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 const SpecificUser = async (req, res) => {
   try {
     const { id } = req.params;
@@ -164,7 +165,6 @@ const SpecificUser = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 const followUser = async (req, res) => {
   try {
@@ -346,31 +346,102 @@ const getUserNotifications = async (req, res) => {
 
 const getFollowersAndFollowing = async (req, res) => {
   try {
-    const userId = req.params.userId;
+    let userId = req.params.userId;
+
+    // Colon hata do agar hai to
+    userId = userId.replace(":", "");
+
+    // Validate userId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: "Invalid user ID." });
+    }
+
+    // User ko find karo aur followers/following populate karo
     const user = await User.findById(userId)
-      .populate('followers', 'id name profilePicture')
-      .populate('following', 'id name profilePicture');
+      .populate('followers', 'id name profilePicture')  // Followers ki details
+      .populate('following', 'id name profilePicture'); // Following ki details
 
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
 
-    const followersFollowing = [
-      ...user.followers.map(follower => ({ id: follower._id, ...follower.toObject() })),
-      ...user.following.map(following => ({ id: following._id, ...following.toObject() })),
-    ];
+    // Followers aur following ko alag-alag objects mein bhejo
+    const response = {
+      followers: user.followers.map(follower => ({
+        id: follower._id,
+        name: follower.name,
+        profilePicture: follower.profilePicture,
+      })),
+      following: user.following.map(following => ({
+        id: following._id,
+        name: following.name,
+        profilePicture: following.profilePicture,
+      })),
+    };
 
-    res.status(200).json(followersFollowing);
+    res.status(200).json(response);
   } catch (error) {
     console.error('Error fetching followers/following:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
 
+// const sendFollowRequest = async (req, res) => {
+//   try {
+//     const { userId } = req.params; // Target user to send follow request
+//     const currentUserId = req.userId; // Authenticated user ID
+
+//     if (userId === currentUserId) {
+//       return res.status(400).json({ message: "You can't send a follow request to yourself" });
+//     }
+
+//     const targetUser = await User.findById(userId);
+//     const currentUser = await User.findById(currentUserId);
+
+//     if (!targetUser || !currentUser) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     // ✅ Check if already following
+//     if (currentUser.following.includes(userId)) {
+//       return res.status(400).json({ message: "You are already following this user" });
+//     }
+
+//     // ✅ Check if a request already exists (prevents duplicates)
+//     const existingRequest = targetUser.followRequests.some(req => req.from.toString() === currentUserId);
+//     if (existingRequest) {
+//       return res.status(400).json({ message: "Follow request already sent" });
+//     }
+
+//     // Add follow request
+//     targetUser.followRequests.push({ from: currentUserId });
+//     await targetUser.save();
+
+//     // Create a notification for the receiving user
+//     const notification = new Notification({
+//       user: userId,
+//       sender: currentUserId,
+//       type: "requested",
+//       message: `has sent you a follow request.`,
+//     });
+
+//     await notification.save();
+
+//     // Add notification to the receiving user's notifications array
+//     targetUser.notifications.push(notification._id);
+//     await targetUser.save();
+
+//     res.status(200).json({ message: "Follow request sent successfully" });
+//   } catch (error) {
+//     console.error("Error in sendFollowRequest:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
+
 const sendFollowRequest = async (req, res) => {
   try {
-    const { userId } = req.params; // Target user to send follow request
-    const currentUserId = req.userId; // Authenticated user ID
+    const { userId } = req.params; // Target user
+    const currentUserId = req.userId; // Authenticated user
 
     if (userId === currentUserId) {
       return res.status(400).json({ message: "You can't send a follow request to yourself" });
@@ -383,22 +454,26 @@ const sendFollowRequest = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // ✅ Check if already following
+    // ✅ Check if already following (prevents redundant requests)
     if (currentUser.following.includes(userId)) {
       return res.status(400).json({ message: "You are already following this user" });
     }
 
-    // ✅ Check if a request already exists (prevents duplicates)
+    // ✅ Check if request already exists (prevents duplicates)
     const existingRequest = targetUser.followRequests.some(req => req.from.toString() === currentUserId);
     if (existingRequest) {
       return res.status(400).json({ message: "Follow request already sent" });
     }
 
-    // Add follow request
+    // ✅ Add receiver to sender's sentRequests (NEW CODE)
+    currentUser.sentRequests.push(userId);
+    await currentUser.save();
+
+    // ✅ Add new follow request
     targetUser.followRequests.push({ from: currentUserId });
     await targetUser.save();
 
-    // Create a notification for the receiving user
+    // ✅ Create notification for request
     const notification = new Notification({
       user: userId,
       sender: currentUserId,
@@ -408,7 +483,7 @@ const sendFollowRequest = async (req, res) => {
 
     await notification.save();
 
-    // Add notification to the receiving user's notifications array
+    // ✅ Add notification to user
     targetUser.notifications.push(notification._id);
     await targetUser.save();
 
@@ -419,6 +494,56 @@ const sendFollowRequest = async (req, res) => {
   }
 };
 
+
+// const acceptFollowRequest = async (req, res) => {
+//   try {
+//     const { userId } = req.params; // Requester's ID
+//     const currentUserId = req.userId; // Authenticated user
+
+//     const currentUser = await User.findById(currentUserId);
+//     const requester = await User.findById(userId);
+
+//     if (!currentUser || !requester) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     // ✅ Ensure the requester is not already in the followers list
+//     if (currentUser.followers.includes(userId)) {
+//       return res.status(400).json({ message: "User is already a follower" });
+//     }
+
+//     // Find and remove the follow request
+//     const requestIndex = currentUser.followRequests.findIndex(req => req.from.toString() === userId);
+//     if (requestIndex === -1) {
+//       return res.status(400).json({ message: "Follow request not found" });
+//     }
+//     currentUser.followRequests.splice(requestIndex, 1); // Remove request
+
+//     // ✅ Add user to followers and following (without duplicates)
+//     currentUser.followers = [...new Set([...currentUser.followers, userId])];
+//     requester.following = [...new Set([...requester.following, currentUserId])];
+
+//     await currentUser.save();
+//     await requester.save();
+
+//     // ✅ Remove the notification for the pending follow request
+//     await Notification.findOneAndDelete({
+//       user: currentUserId,
+//       sender: userId,
+//       type: "requested",
+//     });
+
+//     res.status(200).json({ 
+//       message: "Follow request accepted successfully",
+//       updatedFollowers: currentUser.followers,
+//       updatedFollowRequests: currentUser.followRequests
+//     });
+
+//   } catch (error) {
+//     console.error("Error in accepting follow request:", error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
 
 const acceptFollowRequest = async (req, res) => {
   try {
@@ -432,31 +557,39 @@ const acceptFollowRequest = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // ✅ Ensure the requester is not already in the followers list
+    // ✅ Ensure the requester is not already a follower
     if (currentUser.followers.includes(userId)) {
       return res.status(400).json({ message: "User is already a follower" });
     }
 
-    // Find and remove the follow request
-    const requestIndex = currentUser.followRequests.findIndex(req => req.from.toString() === userId);
-    if (requestIndex === -1) {
-      return res.status(400).json({ message: "Follow request not found" });
-    }
-    currentUser.followRequests.splice(requestIndex, 1); // Remove request
-
-    // ✅ Add user to followers and following (without duplicates)
-    currentUser.followers = [...new Set([...currentUser.followers, userId])];
-    requester.following = [...new Set([...requester.following, currentUserId])];
+    // ✅ Find and remove the follow request
+    currentUser.followRequests = currentUser.followRequests.filter(req => req.from.toString() !== userId);
+    
+    // ✅ Add user to followers and following
+    currentUser.followers.push(userId);
+    requester.following.push(currentUserId);
 
     await currentUser.save();
     await requester.save();
 
-    // ✅ Remove the notification for the pending follow request
+    // ✅ Remove the notification for the follow request
     await Notification.findOneAndDelete({
       user: currentUserId,
       sender: userId,
       type: "requested",
     });
+
+    // ✅ Create a new notification for successful follow
+    const newNotification = new Notification({
+      user: currentUserId,
+      sender: userId,
+      type: "follow",
+      message: "started following you",
+    });
+
+    await newNotification.save();
+    currentUser.notifications.push(newNotification._id);
+    await currentUser.save();
 
     res.status(200).json({ 
       message: "Follow request accepted successfully",
@@ -471,6 +604,33 @@ const acceptFollowRequest = async (req, res) => {
 };
 
 
+// const rejectFollowRequest = async (req, res) => {
+//   try {
+//     const { userId } = req.params; // Requester ID
+//     const currentUserId = req.userId;
+
+//     const currentUser = await User.findById(currentUserId);
+
+//     if (!currentUser) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     const requestIndex = currentUser.followRequests.findIndex(req => req.from.toString() === userId);
+//     if (requestIndex === -1) {
+//       return res.status(400).json({ message: "Follow request not found" });
+//     }
+
+//     // ✅ Remove the follow request
+//     currentUser.followRequests.splice(requestIndex, 1);
+//     await currentUser.save();
+
+//     res.status(200).json({ message: "Follow request rejected successfully" });
+//   } catch (error) {
+//     console.error("Error rejecting follow request:", error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
 const rejectFollowRequest = async (req, res) => {
   try {
     const { userId } = req.params; // Requester ID
@@ -482,14 +642,16 @@ const rejectFollowRequest = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const requestIndex = currentUser.followRequests.findIndex(req => req.from.toString() === userId);
-    if (requestIndex === -1) {
-      return res.status(400).json({ message: "Follow request not found" });
-    }
-
     // ✅ Remove the follow request
-    currentUser.followRequests.splice(requestIndex, 1);
+    currentUser.followRequests = currentUser.followRequests.filter(req => req.from.toString() !== userId);
     await currentUser.save();
+
+    // ✅ Remove the notification for this request
+    await Notification.findOneAndDelete({
+      user: currentUserId,
+      sender: userId,
+      type: "requested",
+    });
 
     res.status(200).json({ message: "Follow request rejected successfully" });
   } catch (error) {
@@ -501,17 +663,75 @@ const rejectFollowRequest = async (req, res) => {
 
 const getFollowRequests = async (req, res) => {
   try {
-      const userId = req.params.userId;
-      const user = await User.findById(userId).populate("followRequests.from", "username profilePicture");
+    const userId = req.params.userId;
+    const user = await User.findById(userId).populate("followRequests.from", "username profilePicture");
 
-      if (!user) {
-          return res.status(404).json({ message: "User not found" });
-      }
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-      res.status(200).json(user.followRequests);
+    // ✅ Extract only sent requests
+    const sentRequests = user.followRequests.map((req) => ({
+      to: req.from._id,
+      username: req.from.username,
+      profilePicture: req.from.profilePicture,
+    }));
+
+    res.status(200).json({ sentRequests }); // ✅ Return as object
   } catch (error) {
-      console.error("Error fetching follow requests:", error);
-      res.status(500).json({ message: "Server error" });
+    console.error("Error fetching follow requests:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+const RequestedUsers  = async (req, res) => {
+  try {
+    // Notification model mein sender=current user aur type=requested dhoondo
+    const sentNotifications = await Notification.find({
+      sender: req.userId,  // AuthenticateUser middleware se aaya hai
+      type: "requested"    // Kyuki friend request ka type 'requested' hai
+    })
+    .populate("user", "username profilePicture")  // Recipient ki details lekar aao
+    .sort({ createdAt: -1 });  // Latest pehle
+
+    // Sirf users ki list extract karo
+    const sentUsers = sentNotifications.map(notif => notif.user);
+    
+    res.json(sentUsers);
+  } catch (error) {
+    console.error("Error fetching sent requests:", error);
+    res.status(500).json({ error: "Server ki galti, phir try karein" });
+  }
+}
+
+const RecievedRequests = async (req, res) => {
+  try {
+    // Notification model mein user=current user aur type=requested dhoondo
+    const receivedNotifications = await Notification.find({
+      user: req.userId,     // Jisne request receive ki hai
+      type: "requested"     // Friend request type
+    })
+    .populate("sender", "username profilePicture")  // Sender ki details
+    .sort({ createdAt: -1 });
+
+    // Sender users ko extract karo
+    const receivedUsers = receivedNotifications.map(notif => notif.sender);
+    
+    res.json(receivedUsers);
+  } catch (error) {
+    console.error("Error fetching received requests:", error);
+    res.status(500).json({ error: "Server mein dikkat, baad mein try karein" });
+  }
+}
+
+// Backend: Get sent follow requests
+const getSentFollowRequests = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const user = await User.findById(userId).select("sentRequests");
+    res.status(200).json(user.sentRequests);
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -530,4 +750,7 @@ module.exports = {
   acceptFollowRequest,
   rejectFollowRequest,
   getFollowRequests,
+  RequestedUsers,
+  RecievedRequests,
+  getSentFollowRequests,
 };

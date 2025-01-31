@@ -207,7 +207,7 @@ function HomePage() {
             try {
                 const token = localStorage.getItem("token");
                 const response = await axios.post(
-                    `http://localhost:3000/api/posts/${id}/comments`,
+                    `http://localhost:3000/api/comment/${id}/comments`,
                     newComment,
                     {
                         headers: { Authorization: `Bearer ${token}` },
@@ -338,9 +338,7 @@ function HomePage() {
           console.error('Error sending follow request:', error.response || error.message);
         }
       };
-      
-    
-      
+           
     const handleAcceptFollowRequest = async (userId) => {
         try {
           const token = localStorage.getItem('token');

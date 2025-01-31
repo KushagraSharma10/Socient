@@ -87,4 +87,70 @@ const createComment = async (req, res) => {
     }
   }
 
-  module.exports = createComment;
+  const deleteComment = async (req, res) => {
+    try {
+      const { commentId } = req.params;
+      const userId = req.userId; // set by authenticateUser
+  
+      // 1. Find the comment
+      const comment = await Comment.findById(commentId);
+      if (!comment) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+  
+      // 2. Check if current user is the owner
+      if (comment.userId.toString() !== userId) {
+        return res
+          .status(403)
+          .json({ message: "You are not allowed to delete this comment" });
+      }
+  
+      // 3. Delete the comment
+      await Comment.findByIdAndDelete(commentId);
+  
+      // 4. Return success response
+      return res.status(200).json({ message: "Comment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      return res.status(500).json({ message: "Server error" });
+    }
+  }
+
+const getAllComments = async (req, res) => {
+  try {
+    const { postId } = req.query;
+    
+    // ✅ Convert `postId` to ObjectId if provided
+    const filter = postId ? { postId: new mongoose.Types.ObjectId(postId) } : {}; 
+
+    const comments = await Comment.find(filter)
+      .populate("userId", "username profilePicture")
+      .sort({ timestamp: -1 });
+
+    res.status(200).json(comments);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+const specificComment = async (req, res) => {
+  try {
+    const comment = await Comment.findById(req.params.commentId)
+      .populate("userId", "username profilePicture");
+
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    res.status(200).json(comment);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+  module.exports = {
+    createComment,
+    deleteComment,
+    getAllComments,
+    specificComment,  
+  };

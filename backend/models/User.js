@@ -50,17 +50,23 @@ const userSchema = new mongoose.Schema({
   followRequests: [
     {
       from: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-      status: { type: String, enum: ["pending", "accepted", "rejected"], default: "pending" },
+      status: {
+        type: String,
+        enum: ["pending", "accepted", "rejected"],
+        default: "pending",
+      },
     },
   ],
+  sentRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // Track sent follow requests
   posts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
-  notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: "Notification" }],
+  notifications: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "Notification" },
+  ],
   chats: [{ type: mongoose.Schema.Types.ObjectId, ref: "Chat" }],
   createdAt: { type: Date, default: Date.now },
 });
 
 const User = mongoose.model("User", userSchema);
-
 
 // Joi Validation Schema
 const validateUser = (data) => {
@@ -75,6 +81,5 @@ const validateUser = (data) => {
 
   return schema.validate(data);
 };
-
 
 module.exports = { User, validateUser };

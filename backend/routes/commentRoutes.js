@@ -1,10 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const Comment = require("../models/Comment"); // Import the Comment model
-const createComment = require("../controllers/commentController");
+const {createComment, deleteComment, specificComment, getAllComments} = require("../controllers/commentController");
 const authenticateToken = require("../middlewares/authenticateToken");
 const Post = require("../models/Post");
 const axios = require("axios");
+const authenticateUser = require("../middlewares/authenticateUser");
 
 
 // router.post("/:postId/comments", authenticateToken, async (req, res) => {
@@ -89,15 +90,17 @@ const axios = require("axios");
 router.post("/:postId/comments", authenticateToken, createComment);
 
 
-router.get("/:postId/comments", async (req, res) => {
-  // Logic to fetch comments for a specific post
-});
+// ✅ Get all comments (optional: filter by postId)
+router.get("/all", getAllComments);
 
-// Example route for deleting a comment
-router.delete("/:postId/comments/:commentId", async (req, res) => {
-  // Logic to delete a comment
-});
+// ✅ Get a specific comment by ID
+router.get("/:commentId", specificComment);
 
-// Other comment-related routes...
+
+
+
+// ✅ Delete comment route
+router.delete("/:commentId", authenticateUser, deleteComment);
+
 
 module.exports = router;

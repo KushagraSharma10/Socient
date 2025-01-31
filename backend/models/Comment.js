@@ -37,8 +37,8 @@ const commentSchema = new mongoose.Schema({
 // Joi Validation Schema
 const validateComment = (data) => {
   const schema = Joi.object({
-    postId: Joi.string().required(),
-    userId: Joi.string().required(),
+    postId: Joi.string().hex().length(24).required(), // ✅ Ensures valid MongoDB ObjectId
+    userId: Joi.string().hex().length(24).required(), // ✅ Ensures valid MongoDB ObjectId
     content: Joi.string().trim().max(300).required(),
     userDp: Joi.string().uri(),
   });

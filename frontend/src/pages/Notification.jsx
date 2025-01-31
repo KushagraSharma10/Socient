@@ -99,14 +99,15 @@ const Notification = () => {
                 { headers: { Authorization: `Bearer ${token}` } }
             );
     
-            // ✅ Remove the rejected request from the UI
-            setNotifications((prevNotifications) =>
-                prevNotifications.filter((notification) => notification._id !== notificationId)
+            // ✅ Remove the rejected request from UI
+            setNotifications(prevNotifications =>
+                prevNotifications.filter(notification => notification._id !== notificationId)
             );
         } catch (error) {
             console.error("Error rejecting follow request:", error);
         }
-    };    
+    };
+    
 
     return (
         <div
