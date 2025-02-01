@@ -7,6 +7,7 @@ const notificationSchema = new mongoose.Schema({
   sender: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   type: { type: String, enum: ["follow", "like", "comment", "requested"], required: true },
   message: { type: String, required: true, trim: true },
+  post: { type: mongoose.Schema.Types.ObjectId, ref: "Post" }, // <-- Add this
   isRead: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });

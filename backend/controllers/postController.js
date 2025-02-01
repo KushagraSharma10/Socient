@@ -4,6 +4,8 @@ const { Post } = require("../models/Post"); // Adjust the path based on your fil
 const imagekit = require("../config/imageKit"); // Import ImageKit configuration
 const {User} = require("../models/User");
 const mongoose = require("mongoose");
+const {Notification} = require('../models/Notifications'); 
+
 
 
 
@@ -157,6 +159,7 @@ const getPosts = async (req, res) => {
   }
 };
 
+
 const toggleLike = async (req, res) => {
   try {
     const { postId } = req.params;
@@ -177,16 +180,57 @@ const toggleLike = async (req, res) => {
 
     const hasLiked = post.likes.includes(userId);
 
+    // Toggle the like in the Post model
     const updatedPost = await Post.findByIdAndUpdate(
       postId,
-      hasLiked ? { $pull: { likes: userId } } : { $addToSet: { likes: userId } }, 
+      hasLiked
+        ? { $pull: { likes: userId } }
+        : { $addToSet: { likes: userId } },
       { new: true }
-    ).populate("likes", "username"); // Populate usernames of users who liked
+    ).populate("likes", "username");
+
+    // If user is liking (i.e., previously hasLiked === false, so now it's a new like)
+    if (!hasLiked) {
+      // Avoid sending a notification if user likes their own post
+      if (String(post.userId) !== String(userId)) {
+
+        const userWhoLiked = await User.findById(userId).select("username");
+        // Create a new notification
+        const notification = await Notification.create({
+          user: post.userId,         // The post author (recipient)
+          sender: userId,            // Who triggered the like
+          type: "like",
+          message: `liked your post!`,
+          post: post._id,            // <-- reference the post
+        });
+
+        // Push the notification to the recipient's notifications array
+        await User.findByIdAndUpdate(post.userId, {
+          $push: { notifications: notification._id },
+        });
+      }
+    } else {
+      // If user is unliking, remove the matching notification
+      // (assuming you only want one "like" notification per post)
+      const notification = await Notification.findOneAndDelete({
+        user: post.userId,      // the post's owner
+        sender: userId,         // the user who liked
+        type: "like",
+        post: post._id,         // only remove the notification for this specific post
+      });
+
+      // If we found a notification, pull it from the user's notifications array
+      if (notification) {
+        await User.findByIdAndUpdate(post.userId, {
+          $pull: { notifications: notification._id },
+        });
+      }
+    }
 
     return res.status(200).json({
       postId: updatedPost._id,
       hasLiked: !hasLiked,
-      likedUsers: updatedPost.likes.map(user => user.username), // Return liked users
+      likedUsers: updatedPost.likes.map((user) => user.username),
     });
   } catch (error) {
     console.error("Error toggling like:", error);
@@ -194,7 +238,32 @@ const toggleLike = async (req, res) => {
   }
 };
 
+const deletePost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.userId; // From authenticateUser middleware
+
+    // Find the post
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    // Check if the current user is the owner of the post
+    if (post.userId.toString() !== userId) {
+      return res.status(403).json({ message: "You are not allowed to delete this post" });
+    }
+
+    // Delete the post
+    await Post.findByIdAndDelete(postId);
+
+    // Return success response
+    res.status(200).json({ message: "Post deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting post:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+}
 
 
-
-module.exports = { createPost, getPosts, toggleLike };
+module.exports = { createPost, getPosts, toggleLike, deletePost };

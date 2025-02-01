@@ -16,6 +16,7 @@ import PostItem from "../components/PostItem"; // Keep your original PostItem co
 import Post from "../components/Post"; // Keep your Post component
 import RightSidebar from "../components/RightSideBar";
 import Navbar from "../components/Navbar";
+import ConfirmationModal from "../components/ConfirmationModal ";
 gsap.registerPlugin(ScrollTrigger);
 
 function HomePage() {
@@ -26,6 +27,22 @@ function HomePage() {
         const savedTheme = localStorage.getItem("isDarkMode");
         return savedTheme ? JSON.parse(savedTheme) : false;
     });
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [selectedCommentId, setSelectedCommentId] = useState(null);
+    const [deletingCommentId, setDeletingCommentId] = useState(null);
+    const [deletionError, setDeletionError] = useState(null);
+    const [selectedPostId, setSelectedPostId] = useState(null);
+    const [confirmationModal, setConfirmationModal] = useState({
+        isOpen: false,
+        message: "",
+        confirmText: "",
+        cancelText: "",
+        onConfirm: () => { },
+        onCancel: () => { },
+        isDeleting: false,
+    });
+
+
     const navigate = useNavigate();
     const postRefs = useRef([]);
 
@@ -48,6 +65,8 @@ function HomePage() {
             lenis.destroy();
         };
     }, []);
+
+    // const token = localStorage.getItem("token");
 
     // Fetch the logged-in user's profile
     useEffect(() => {
@@ -79,7 +98,7 @@ function HomePage() {
                     headers: { Authorization: `Bearer ${token}` },
                     withCredentials: true,
                 });
-    
+
                 // Ensure the frontend correctly stores `hasLiked`
                 setPosts(response.data);
             } catch (error) {
@@ -88,7 +107,7 @@ function HomePage() {
         };
         fetchPosts();
     }, []);
-    
+
     // GSAP for animation on post items
     useEffect(() => {
         if (postRefs.current.length > 0) {
@@ -141,10 +160,10 @@ function HomePage() {
                         headers: { Authorization: `Bearer ${token}` },
                     }
                 );
-    
+
                 if (response.status === 200) {
                     const { likedUsers, hasLiked } = response.data; // Extract liked users
-    
+
                     // Update post state to show liked usernames instead of like count
                     setPosts((prevPosts) =>
                         prevPosts.map((post) =>
@@ -160,8 +179,6 @@ function HomePage() {
         },
         [posts]
     );
-    
-    
 
     const handleCommentToggle = useCallback(
         (id) => {
@@ -247,23 +264,22 @@ function HomePage() {
             await axios.post("http://localhost:3000/api/users/logout", {}, {
                 withCredentials: true,
             });
-    
+
             // Clear authentication data
             if (localStorage.getItem("token")) {
                 localStorage.removeItem("token");
             }
             sessionStorage.removeItem("token"); // Clear session storage if used
-    
+
             setUser(null); // Reset user state
-    
+
             navigate("/"); // Redirect to home or login page
-    
+
             window.location.reload(); // Optional: Ensure session reset
         } catch (error) {
             console.error("Error logging out:", error.response ? error.response.data : error);
         }
     };
-    
 
     // Toggle dark mode
     const toggleDarkMode = () => {
@@ -281,7 +297,7 @@ function HomePage() {
                     headers: { Authorization: `Bearer ${token}` },
                 }
             );
-    
+
             if (response.status === 200) {
                 setUser((prevUser) => ({
                     ...prevUser,
@@ -292,7 +308,7 @@ function HomePage() {
             console.error("Error following user:", error);
         }
     }, [setUser]);
-    
+
     const handleUnfollow = useCallback(async (UserId) => {
         try {
             const token = localStorage.getItem("token");
@@ -303,7 +319,7 @@ function HomePage() {
                     headers: { Authorization: `Bearer ${token}` },
                 }
             );
-    
+
             if (response.status === 200) {
                 setUser((prevUser) => ({
                     ...prevUser,
@@ -317,49 +333,122 @@ function HomePage() {
 
     const handleSendFollowRequest = async (userId) => {
         try {
-          console.log("Sending follow request to:", userId); // Debug log to verify userId
-          const token = localStorage.getItem('token');
-          if (!token) throw new Error('Token not found');
-      
-          const response = await axios.post(
-            `http://localhost:3000/api/users/${userId}/request-follow`, // Check this URL
-            {}, // Empty body, if no additional data is required
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
+            console.log("Sending follow request to:", userId); // Debug log to verify userId
+            const token = localStorage.getItem('token');
+            if (!token) throw new Error('Token not found');
+
+            const response = await axios.post(
+                `http://localhost:3000/api/users/${userId}/request-follow`, // Check this URL
+                {}, // Empty body, if no additional data is required
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            if (response.status === 200) {
+                console.log('Follow request sent successfully:', response.data);
             }
-          );
-      
-          if (response.status === 200) {
-            console.log('Follow request sent successfully:', response.data);
-          }
         } catch (error) {
-          console.error('Error sending follow request:', error.response || error.message);
+            console.error('Error sending follow request:', error.response || error.message);
         }
-      };
-           
+    };
+
     const handleAcceptFollowRequest = async (userId) => {
         try {
-          const token = localStorage.getItem('token');
-          const response = await axios.put(
-            `http://localhost:3000/api/users/${userId}/accept-follow`,
-            {},
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-      
-          if (response.status === 200) {
-            setUser((prevUser) => ({
-                ...prevUser,
-                followers: response.data.updatedFollowers, // ✅ Update followers list dynamically
-            }));
-        }
+            const token = localStorage.getItem('token');
+            const response = await axios.put(
+                `http://localhost:3000/api/users/${userId}/accept-follow`,
+                {},
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            if (response.status === 200) {
+                setUser((prevUser) => ({
+                    ...prevUser,
+                    followers: response.data.updatedFollowers, // ✅ Update followers list dynamically
+                }));
+            }
         } catch (error) {
-          console.error('Error accepting follow request:', error);
+            console.error('Error accepting follow request:', error);
         }
-      };
+    };
+
+
+
+    // Handler for opening the confirmation modal
+    const openConfirmationModal = (config) => {
+        setConfirmationModal({
+            isOpen: true,
+            message: config.message,
+            confirmText: config.confirmText || "Delete",
+            cancelText: config.cancelText || "Cancel",
+            onConfirm: config.onConfirm,
+            onCancel: config.onCancel,
+            isDeleting: false,
+        });
+    };
+
+    // Handler for closing the confirmation modal
+    const closeConfirmationModal = () => {
+        setConfirmationModal({
+            isOpen: false,
+            message: "",
+            confirmText: "",
+            cancelText: "",
+            onConfirm: () => { },
+            onCancel: () => { },
+            isDeleting: false,
+        });
+    };
+
+    // Updated comment deletion handler
+    const handleCommentDelete = useCallback(async (commentId) => {
+        try {
+            setConfirmationModal(prev => ({ ...prev, isDeleting: true }));
+
+            const token = localStorage.getItem("token");
+            await axios.delete(`http://localhost:3000/api/comment/${commentId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            setPosts(prevPosts => prevPosts.map(post => ({
+                ...post,
+                comments: post.comments.filter(comment => comment._id !== commentId)
+            })));
+        } catch (error) {
+            setDeletionError("Failed to delete comment. Please try again.");
+        } finally {
+            closeConfirmationModal();
+        }
+    }, []);
+
+    // Updated post deletion handler
+    const handlePostDelete = useCallback(async () => {
+        try {
+          if (!selectedPostId) {
+            throw new Error("No post selected for deletion.");
+          }
       
-    
+          setConfirmationModal(prev => ({ ...prev, isDeleting: true }));
+      
+          const token = localStorage.getItem("token");
+          await axios.delete(`http://localhost:3000/api/posts/${selectedPostId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+      
+          setPosts(prevPosts => prevPosts.filter(post => post._id !== selectedPostId));
+        } catch (error) {
+          console.error("Error deleting post:", error);
+          setDeletionError("Failed to delete post. Please try again.");
+        } finally {
+          closeConfirmationModal();
+        }
+      }, [selectedPostId]);
+
+
+
     return (
         <div
             className={`flex ${isDarkMode ? "bg-black text-white" : "bg-gray-100 text-gray-900"
@@ -390,6 +479,16 @@ function HomePage() {
                                     handleCommentToggle={handleCommentToggle}
                                     handleCommentChange={handleCommentChange}
                                     handleCommentSubmit={handleCommentSubmit}
+                                    handleCommentDelete={handleCommentDelete} // Add this
+                                    currentUserId={user?._id} // Add this
+                                    deletingCommentId={deletingCommentId}
+                                    setSelectedCommentId={setSelectedCommentId}
+                                    setSelectedPostId={setSelectedPostId}
+                                    setShowDeleteModal={setShowDeleteModal}
+                                    openConfirmationModal={openConfirmationModal} // Add this
+                                    closeConfirmationModal={closeConfirmationModal} // Add this
+                                    handlePostDelete={handlePostDelete} // Add this
+
                                 />
                             </div>
                         ))
@@ -402,8 +501,16 @@ function HomePage() {
                 isDarkMode={isDarkMode}
                 onFollow={handleFollow} // Pass follow handler
                 onUnfollow={handleUnfollow} // Pass unfollow handler
-                handleSendFollowRequest = {handleSendFollowRequest}
-                handleAcceptFollowRequest = {handleAcceptFollowRequest}
+                handleSendFollowRequest={handleSendFollowRequest}
+                handleAcceptFollowRequest={handleAcceptFollowRequest}
+                showDeleteModal={showDeleteModal}
+                setShowDeleteModal={setShowDeleteModal}
+                selectedPostId={selectedPostId}
+                handlePostDelete={handlePostDelete}
+                deletionError={deletionError}
+                setDeletionError={setDeletionError}
+                openConfirmationModal={openConfirmationModal}
+                closeConfirmationModal={closeConfirmationModal}
             />
             {isModalOpen && (
                 <Post
@@ -412,6 +519,15 @@ function HomePage() {
                     isDarkMode={isDarkMode}
                 />
             )}
+            <ConfirmationModal
+                isOpen={confirmationModal.isOpen}
+                message={confirmationModal.message}
+                confirmText={confirmationModal.confirmText}
+                cancelText={confirmationModal.cancelText}
+                onConfirm={confirmationModal.onConfirm}
+                onCancel={confirmationModal.onCancel}
+                isDeleting={confirmationModal.isDeleting}
+            />
         </div>
     );
 }

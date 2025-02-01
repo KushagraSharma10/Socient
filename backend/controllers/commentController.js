@@ -1,6 +1,10 @@
 const {Comment} = require("../models/Comment");
 const {Post} = require('../models/Post'); 
+const {Notification} = require('../models/Notifications'); 
 const axios = require("axios");
+const { User } = require("../models/User");
+const mongoose = require("mongoose");
+
 
 
 const createComment = async (req, res) => {
@@ -60,11 +64,28 @@ const createComment = async (req, res) => {
       // Update the post's overall sentiment
       post.overallSentiment = overallSentiment;
       await post.save();
-  
-      // ** Populate the user data in the comment response **
-      const populatedComment = await Comment.findById(comment._id).populate('userId', 'username profilePicture');
-  
-  
+
+       // ** Populate the user data in the comment response **
+       const populatedComment = await Comment.findById(comment._id).populate('userId', 'username profilePicture');
+
+      if (String(post.userId) !== String(req.userId)) {
+        // 1. Create a new notification
+        const notification = await Notification.create({
+          user: post.userId,       // The post's owner
+          sender: req.userId,      // The commenter
+          type: "comment",
+          // message: `Someone commented on your post!`,
+          // or a more descriptive message
+          message: `${populatedComment.userId.username} commented: "${content}"`,
+          post: post._id,
+        });
+      
+        // 2. Push the notification into the recipient's notifications array
+        await User.findByIdAndUpdate(post.userId, {
+          $push: { notifications: notification._id },
+        });
+      }
+
       console.log("Comment saved with sentiment:", populatedComment);
       console.log("Saving comment:", {
         postId,
@@ -74,12 +95,11 @@ const createComment = async (req, res) => {
         sentiment,
       });
       console.log("Request body:", req.body);
-  
-      // Return success response with the saved comment and overall sentiment
+      
       res.status(201).json({
         message: "Comment created successfully",
-        comment: populatedComment,  // Now returns the populated comment with username and profile picture
-        overallSentiment,           // Return the overall sentiment
+        comment: populatedComment,
+        overallSentiment,
       });
     } catch (error) {
       console.error("Error creating comment:", error);
@@ -87,35 +107,80 @@ const createComment = async (req, res) => {
     }
   }
 
-  const deleteComment = async (req, res) => {
-    try {
-      const { commentId } = req.params;
-      const userId = req.userId; // set by authenticateUser
-  
-      // 1. Find the comment
-      const comment = await Comment.findById(commentId);
-      if (!comment) {
-        return res.status(404).json({ message: "Comment not found" });
-      }
-  
-      // 2. Check if current user is the owner
-      if (comment.userId.toString() !== userId) {
-        return res
-          .status(403)
-          .json({ message: "You are not allowed to delete this comment" });
-      }
-  
-      // 3. Delete the comment
-      await Comment.findByIdAndDelete(commentId);
-  
-      // 4. Return success response
-      return res.status(200).json({ message: "Comment deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting comment:", error);
-      return res.status(500).json({ message: "Server error" });
-    }
-  }
 
+
+const deleteComment = async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const userId = req.userId; // The user performing the delete
+
+    // 1. Find the comment
+    const comment = await Comment.findById(commentId);
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    // 2. Check if the current user is the owner of the comment
+    if (comment.userId.toString() !== userId) {
+      return res.status(403).json({ message: "You are not allowed to delete this comment" });
+    }
+
+    // 3. Find the related post
+    const post = await Post.findById(comment.postId);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    console.log("✅ Post Owner ID:", post.userId);
+    console.log("✅ Deleting comment with ID:", comment._id);
+
+    // 4. Delete the comment from the Comment collection
+    await Comment.findByIdAndDelete(commentId);
+    console.log("✅ Comment deleted successfully");
+
+    // 5. Remove the comment reference from the post’s `comments` array
+    await Post.findByIdAndUpdate(post._id, {
+      $pull: { comments: comment._id }
+    });
+    console.log("✅ Comment removed from post's comments array");
+
+    // 6. **Fix the Notification Query (Convert `sender` to ObjectId)**
+    const notificationQuery = {
+      user: post.userId,  
+      sender: new mongoose.Types.ObjectId(userId),  // ✅ Ensure sender is ObjectId
+      type: "comment",
+      post: post._id
+    };
+
+    const notification = await Notification.findOne(notificationQuery);
+    console.log("🔍 Searching for Notification:", notificationQuery);
+    console.log("✅ Found Notification:", notification);
+
+    if (notification) {
+      // 7. Delete the notification from Notification collection
+      await Notification.findByIdAndDelete(notification._id);
+      console.log("✅ Notification deleted from collection");
+
+      // 8. Remove the notification from the post owner's notifications array
+      await User.findByIdAndUpdate(post.userId, {
+        $pull: { notifications: notification._id }
+      });
+      console.log("✅ Notification removed from user's notification list");
+    } else {
+      console.log("⚠️ No matching notification found to delete.");
+    }
+
+    return res.status(200).json({ message: "Comment deleted and notification removed successfully" });
+
+  } catch (error) {
+    console.error("❌ Error deleting comment:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+  
+
+  
 const getAllComments = async (req, res) => {
   try {
     const { postId } = req.query;

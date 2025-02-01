@@ -96,9 +96,6 @@ router.get("/all", getAllComments);
 // ✅ Get a specific comment by ID
 router.get("/:commentId", specificComment);
 
-
-
-
 // ✅ Delete comment route
 router.delete("/:commentId", authenticateUser, deleteComment);
 
