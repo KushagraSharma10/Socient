@@ -34,7 +34,8 @@ const postSchema = new mongoose.Schema({
   overallSentiment: {
     type: String,
     enum: ["positive", "negative", "neutral"],
-    default: "neutral",
+    default: "neutral", // Ensure default is set
+  required: true // Add this to enforce value
   },
   createdAt: {
     type: Date,

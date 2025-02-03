@@ -24,3 +24,19 @@
   display: flex;
   overflow: hidden;
 }
+
+.chart-container {
+  overflow: visible !important;
+}
+
+.comment-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #06b6d4; /* Cyan color */
+  transition: color 0.3s ease;
+}
+
+.comment-button:hover {
+  color: #0e7490; /* Darker cyan on hover */
+}

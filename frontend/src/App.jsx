@@ -5,6 +5,7 @@ import RegisterPage from "./pages/RegisterPage"
 import UserProfile from "./pages/UserProfile"
 import Messenger from "./pages/Messenger"
 import Notification from "./pages/Notification"
+import EditProfile from "./pages/EditProfile"
 
 const App = () => {
 
@@ -16,6 +17,7 @@ const App = () => {
       <Route path="/profile/:userId" element={<UserProfile />} />
       <Route path="/messanger" element={<Messenger />} />
       <Route path="/notifications" element={<Notification />} />
+      <Route path="/edit-profile" element={<EditProfile />} />
     </Routes>
   )
 }

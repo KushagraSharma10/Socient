@@ -5,7 +5,7 @@ const imagekit = require("../config/imageKit");
 const  mongoose  = require("mongoose");
 const {Notification} = require("../models/Notifications");
 const { emitNotification } = require("../config/socketio");
-
+const {Post} = require("../models/Post")
 const LoginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -150,7 +150,7 @@ const SpecificUser = async (req, res) => {
       .select("-password -tokens")
       .populate({
         path: "posts",
-        select: "images content createdAt", // Populate only necessary fields
+        select: "images content createdAt likes comments", // Populate only necessary fields
       })
       .populate("followers", "username profilePicture")
       .populate("following", "username profilePicture");
@@ -346,40 +346,36 @@ const getUserNotifications = async (req, res) => {
 
 const getFollowersAndFollowing = async (req, res) => {
   try {
-    let userId = req.params.userId;
+    let userId = req.params.userId.replace(":", "");
+    const { type } = req.query; // Get type from query params
 
-    // Colon hata do agar hai to
-    userId = userId.replace(":", "");
-
-    // Validate userId
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ error: "Invalid user ID." });
     }
 
-    // User ko find karo aur followers/following populate karo
+    // Validate type parameter
+    const validTypes = ['followers', 'following'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ error: 'Invalid type specified. Use "followers" or "following".' });
+    }
+
+    // Find user and populate only the requested type
     const user = await User.findById(userId)
-      .populate('followers', 'id name profilePicture')  // Followers ki details
-      .populate('following', 'id name profilePicture'); // Following ki details
+      .populate(type, 'id name profilePicture');
 
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
 
-    // Followers aur following ko alag-alag objects mein bhejo
-    const response = {
-      followers: user.followers.map(follower => ({
-        id: follower._id,
-        name: follower.name,
-        profilePicture: follower.profilePicture,
-      })),
-      following: user.following.map(following => ({
-        id: following._id,
-        name: following.name,
-        profilePicture: following.profilePicture,
-      })),
-    };
+    // Return only the requested type
+    res.status(200).json({
+      [type]: user[type].map(item => ({
+        id: item._id,
+        name: item.name,
+        profilePicture: item.profilePicture,
+      }))
+    });
 
-    res.status(200).json(response);
   } catch (error) {
     console.error('Error fetching followers/following:', error.message);
     res.status(500).json({ error: 'Server error' });
@@ -495,56 +491,6 @@ const sendFollowRequest = async (req, res) => {
 };
 
 
-// const acceptFollowRequest = async (req, res) => {
-//   try {
-//     const { userId } = req.params; // Requester's ID
-//     const currentUserId = req.userId; // Authenticated user
-
-//     const currentUser = await User.findById(currentUserId);
-//     const requester = await User.findById(userId);
-
-//     if (!currentUser || !requester) {
-//       return res.status(404).json({ message: "User not found" });
-//     }
-
-//     // ✅ Ensure the requester is not already in the followers list
-//     if (currentUser.followers.includes(userId)) {
-//       return res.status(400).json({ message: "User is already a follower" });
-//     }
-
-//     // Find and remove the follow request
-//     const requestIndex = currentUser.followRequests.findIndex(req => req.from.toString() === userId);
-//     if (requestIndex === -1) {
-//       return res.status(400).json({ message: "Follow request not found" });
-//     }
-//     currentUser.followRequests.splice(requestIndex, 1); // Remove request
-
-//     // ✅ Add user to followers and following (without duplicates)
-//     currentUser.followers = [...new Set([...currentUser.followers, userId])];
-//     requester.following = [...new Set([...requester.following, currentUserId])];
-
-//     await currentUser.save();
-//     await requester.save();
-
-//     // ✅ Remove the notification for the pending follow request
-//     await Notification.findOneAndDelete({
-//       user: currentUserId,
-//       sender: userId,
-//       type: "requested",
-//     });
-
-//     res.status(200).json({ 
-//       message: "Follow request accepted successfully",
-//       updatedFollowers: currentUser.followers,
-//       updatedFollowRequests: currentUser.followRequests
-//     });
-
-//   } catch (error) {
-//     console.error("Error in accepting follow request:", error);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
-
 const acceptFollowRequest = async (req, res) => {
   try {
     const { userId } = req.params; // Requester's ID
@@ -604,32 +550,6 @@ const acceptFollowRequest = async (req, res) => {
 };
 
 
-// const rejectFollowRequest = async (req, res) => {
-//   try {
-//     const { userId } = req.params; // Requester ID
-//     const currentUserId = req.userId;
-
-//     const currentUser = await User.findById(currentUserId);
-
-//     if (!currentUser) {
-//       return res.status(404).json({ message: "User not found" });
-//     }
-
-//     const requestIndex = currentUser.followRequests.findIndex(req => req.from.toString() === userId);
-//     if (requestIndex === -1) {
-//       return res.status(400).json({ message: "Follow request not found" });
-//     }
-
-//     // ✅ Remove the follow request
-//     currentUser.followRequests.splice(requestIndex, 1);
-//     await currentUser.save();
-
-//     res.status(200).json({ message: "Follow request rejected successfully" });
-//   } catch (error) {
-//     console.error("Error rejecting follow request:", error);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
 
 const rejectFollowRequest = async (req, res) => {
   try {
@@ -735,6 +655,96 @@ const getSentFollowRequests = async (req, res) => {
   }
 };
 
+const getUserSentimentStats = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Remove the user ID comparison check unless you need strict ownership
+    // if (req.userId !== userId) {
+    //   return res.status(403).json({ error: 'Unauthorized access' });
+    // }
+
+    // Get all posts for the user with overallSentiment
+    const userPosts = await Post.find({ 
+      userId: userId,
+      overallSentiment: { $exists: true } // Only count posts with sentiment analysis
+    });
+
+    if (!userPosts.length) {
+      return res.json({ positive: 0, neutral: 0, negative: 0 });
+    }
+
+    // Count sentiments
+    const sentimentCounts = userPosts.reduce((acc, post) => {
+      acc[post.overallSentiment] += 1;
+      return acc;
+    }, { positive: 0, neutral: 0, negative: 0 });
+
+    // Calculate percentages
+    const totalPosts = userPosts.length;
+    const sentimentPercentages = {
+      positive: ((sentimentCounts.positive / totalPosts) * 100).toFixed(1),
+      neutral: ((sentimentCounts.neutral / totalPosts) * 100).toFixed(1),
+      negative: ((sentimentCounts.negative / totalPosts) * 100).toFixed(1),
+    };
+
+    res.json(sentimentPercentages);
+
+  } catch (error) {
+    console.error('Error fetching sentiment stats:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+const getFollowStatus = async (req, res) => {
+  try {
+    const currentUserId = req.userId;
+    const targetUserId = req.params.userId;
+
+    const currentUser = await User.findById(currentUserId);
+    const targetUser = await User.findById(targetUserId);
+
+    // Check existing relationship
+    const status = {
+      isFollowing: currentUser.following.includes(targetUserId),
+      hasPendingRequest: targetUser.followRequests.some(
+        req => req.from.toString() === currentUserId && req.status === 'pending'
+      )
+    };
+
+    let finalStatus = 'none';
+    if (status.isFollowing) finalStatus = 'following';
+    else if (status.hasPendingRequest) finalStatus = 'requested';
+
+    res.status(200).json({ status: finalStatus });
+  } catch (error) {
+    console.error("Error checking follow status:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+const getCurrentUser =  async (req, res) => {
+  try {
+
+      const userId = req.params;
+      // // Authorization check
+      // if (req.params.userId !== req.userId) {
+      //     return res.status(403).json({ message: "Unauthorized access" });
+      // }
+
+      const user = await User.findById(req.userId)
+          .select('-password -followers -following -posts');
+          
+      if (!user) {
+          return res.status(404).json({ message: "User not found" });
+      }
+
+      res.status(200).json(user);
+  } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Server error" });
+  }
+}
+
 module.exports = {
   LoginUser,
   RegisterUser,
@@ -753,4 +763,7 @@ module.exports = {
   RequestedUsers,
   RecievedRequests,
   getSentFollowRequests,
+  getUserSentimentStats,
+  getFollowStatus, 
+  getCurrentUser,
 };
